@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RxBurnScout — Hourly Burn Condition Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600;9..40,700&family=JetBrains+Mono:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#F5F0E8;--surface:#FFF;--text:#4A3F2F;--text-secondary:#6B5E4A;--text-muted:#8B7E6A;--border:rgba(75,63,47,.08);--border-strong:rgba(75,63,47,.15);--pass:#3D6B3C;--pass-bg:rgba(91,140,90,.08);--pass-bg-strong:rgba(91,140,90,.15);--fail:#A0413A;--fail-bg:rgba(196,83,74,.08);--warn:#8B6914;--warn-bg:rgba(232,168,56,.08);--accent:#E8A838;--font-body:'DM Sans',sans-serif;--font-mono:'JetBrains Mono',monospace;--font-display:'Fraunces',serif;--radius:14px;--radius-sm:8px}
+*{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);font-family:var(--font-body);color:var(--text);min-height:100vh}
+.app-header{background:linear-gradient(135deg,#3A3226 0%,#5C4E3C 40%,#4A6B49 100%);padding:24px 20px 16px;position:relative}
+.app-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");opacity:.5}
+.header-inner{position:relative;display:flex;justify-content:space-between;align-items:flex-start}
+.app-title{font-family:var(--font-display);font-size:24px;font-weight:700;color:#F5F0E8;line-height:1.1;letter-spacing:-.02em}.app-title span{color:var(--accent)}
+.app-subtitle{font-family:var(--font-mono);font-size:9px;color:rgba(245,240,232,.5);margin-top:3px;letter-spacing:.1em}
+.badge-os{padding:3px 8px;background:rgba(245,240,232,.1);border-radius:16px;font-family:var(--font-mono);font-size:8px;color:rgba(245,240,232,.5);border:1px solid rgba(245,240,232,.08);letter-spacing:.05em}
+.nav-tabs{display:flex;gap:3px;margin-top:14px;overflow-x:auto;padding-bottom:2px;position:relative}
+.nav-tab{padding:5px 12px;border-radius:16px;border:none;background:transparent;color:rgba(245,240,232,.45);font-family:var(--font-body);font-size:12px;font-weight:400;cursor:pointer;white-space:nowrap;transition:all .2s}
+.nav-tab.active{background:rgba(245,240,232,.18);color:#F5F0E8;font-weight:600}
+.main{padding:16px 14px;max-width:860px;margin:0 auto}.view{display:none}.view.active{display:flex;flex-direction:column;gap:14px}
+.card{padding:18px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 2px 10px rgba(75,63,47,.05)}
+.card-title{font-family:var(--font-display);font-size:18px;font-weight:600;margin-bottom:10px;line-height:1.2}
+.card-label{font-family:var(--font-mono);font-size:9px;font-weight:600;color:var(--text-muted);letter-spacing:.1em;margin-bottom:10px}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}.form-row.three{grid-template-columns:1fr 1fr 1fr}
+.form-group{display:flex;flex-direction:column;gap:3px}.form-label{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-muted)}
+.form-input,.form-select{padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);background:var(--bg);font-family:var(--font-mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s;width:100%}
+.form-input:focus,.form-select:focus{border-color:var(--pass)}.form-input::placeholder{color:var(--text-muted)}
+.btn{padding:9px 18px;border-radius:var(--radius-sm);border:none;font-family:var(--font-body);font-size:12px;font-weight:600;cursor:pointer;transition:all .2s;display:inline-flex;align-items:center;gap:6px}
+.btn-primary{background:linear-gradient(135deg,#5B8C5A,#4A7B49);color:#fff}.btn-primary:hover{box-shadow:0 3px 10px rgba(91,140,90,.25)}.btn-primary:disabled{opacity:.5;cursor:not-allowed}
+.btn-secondary{background:rgba(75,63,47,.06);color:var(--text-secondary)}.btn-secondary:hover{background:rgba(75,63,47,.12)}
+.btn-danger{background:var(--fail-bg);color:var(--fail)}.btn-sm{padding:5px 10px;font-size:11px}
+.unit-card{padding:14px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 2px 10px rgba(75,63,47,.05);margin-bottom:10px}
+.unit-dot{width:10px;height:10px;border-radius:50%;display:inline-block;flex-shrink:0}
+.unit-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+.unit-name{font-weight:600;font-size:13px;display:flex;align-items:center;gap:8px}
+.unit-meta{display:flex;gap:12px;font-size:11px;color:var(--text-muted);flex-wrap:wrap}
+.hourly-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.hourly-grid{display:grid;gap:2px;min-width:640px;font-size:11px}
+.hg-header{padding:4px 2px;text-align:center;font-family:var(--font-mono);font-weight:500;font-size:9px;color:var(--text-muted)}
+.hg-label{padding:3px 6px;font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--text-secondary);display:flex;align-items:center}
+.hg-cell{padding:3px 2px;text-align:center;font-family:var(--font-mono);font-size:10px;font-weight:500;border-radius:2px}
+.hg-cell.pass{color:var(--pass);background:rgba(91,140,90,.05)}.hg-cell.fail{color:var(--fail);background:rgba(196,83,74,.05)}
+.hg-cell.in-window{background:rgba(91,140,90,.12)}.hg-cell.fail.in-window{background:rgba(196,83,74,.1)}
+.hg-allpass{padding:5px 2px;text-align:center;font-family:var(--font-mono);font-size:12px;font-weight:700;border-top:2px solid var(--border-strong);margin-top:2px}
+.window-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;font-family:var(--font-mono);font-size:11px;font-weight:600}
+.window-badge.found{background:linear-gradient(135deg,#5B8C5A,#4A7B49);color:#fff}.window-badge.none{background:var(--fail-bg);color:var(--fail)}
+.day-tabs{display:flex;gap:6px;flex-wrap:wrap}
+.day-tab{flex:1;min-width:70px;padding:8px 6px;border-radius:10px;border:1px solid rgba(75,63,47,.1);background:rgba(255,255,255,.5);cursor:pointer;font-family:var(--font-body);text-align:center;transition:all .2s}
+.day-tab.active{border:2px solid var(--text);background:var(--surface);box-shadow:0 2px 8px rgba(75,63,47,.1)}
+.day-tab-label{font-weight:600;font-size:11px;color:var(--text)}.day-tab-status{margin-top:3px;font-family:var(--font-mono);font-size:9px;font-weight:600}
+.info-box{padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.5}
+.info-box.success{background:var(--pass-bg);border:1px solid rgba(91,140,90,.12);color:var(--pass)}
+.info-box.warn{background:var(--warn-bg);border:1px solid rgba(232,168,56,.2);color:var(--warn)}
+.info-box.error{background:var(--fail-bg);border:1px solid rgba(196,83,74,.15);color:var(--fail)}
+.spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}.status-dot.pass{background:var(--pass)}.status-dot.fail{background:var(--fail)}
+.empty-state{text-align:center;padding:36px 20px;color:var(--text-muted)}.empty-state h3{font-family:var(--font-display);font-size:18px;color:var(--text-secondary);margin-bottom:6px}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.modal-overlay.open{display:flex}.modal{background:var(--surface);border-radius:var(--radius);padding:22px;max-width:520px;width:100%;margin-top:40px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal-title{font-family:var(--font-display);font-size:18px;font-weight:600;margin-bottom:14px}
+.param-config{display:grid;grid-template-columns:110px 1fr 1fr;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}.param-config:last-child{border-bottom:none}
+.param-name{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-secondary)}
+.summary-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}.summary-row:last-child{border-bottom:none}
+.sync-indicator{font-family:var(--font-mono);font-size:9px;padding:3px 8px;border-radius:12px;display:inline-flex;align-items:center;gap:4px}
+.sync-indicator.connected{background:var(--pass-bg);color:var(--pass)}.sync-indicator.local{background:rgba(75,63,47,.06);color:var(--text-muted)}
+.loc-search-wrap{position:relative}.loc-results{position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:200px;overflow-y:auto;display:none}
+.loc-results.open{display:block}.loc-result{padding:8px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s}
+.loc-result:hover{background:var(--pass-bg)}.loc-result:last-child{border-bottom:none}
+.loc-result-name{font-weight:500;color:var(--text)}.loc-result-detail{font-size:10px;color:var(--text-muted);margin-top:2px;font-family:var(--font-mono)}
+/* Muted no-window days */
+.summary-row.muted{opacity:.45}.summary-row.muted:hover{opacity:.8}
+.summary-row.selected{background:rgba(75,63,47,.04);border-radius:6px}
+.day-tab.muted{opacity:.45}.day-tab.muted.active,.day-tab.muted:hover{opacity:.85}
+/* Header info badges */
+.hdr-badge{position:relative;cursor:pointer;outline:none;line-height:1.4}
+button.badge-os{font-family:var(--font-mono);font-size:8px}
+button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px solid rgba(245,240,232,.08)}
+.sync-indicator.local{color:rgba(245,240,232,.55);background:rgba(245,240,232,.06)}
+.hdr-badge:focus-visible{box-shadow:0 0 0 2px rgba(232,168,56,.6)}
+.hdr-badge .info-i{opacity:.7;margin-left:3px}
+.hdr-tip{display:none;position:absolute;top:calc(100% + 8px);right:0;width:260px;z-index:50;background:#FFFDF8;color:var(--text);border:1px solid var(--border-strong);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.18);font-family:var(--font-body);font-size:12px;line-height:1.5;letter-spacing:0;text-align:left;cursor:default}
+.hdr-tip strong{display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:.06em;margin-bottom:4px;color:var(--text-muted)}
+.hdr-tip a{color:var(--pass);font-weight:600;cursor:pointer;text-decoration:underline}
+.hdr-badge.open .hdr-tip{display:block}
+@media(hover:hover){.hdr-badge:hover .hdr-tip{display:block}}
+/* Unit selector edit affordance */
+.unit-pill-edit{margin-left:4px;opacity:.8;font-size:11px}
+/* Day navigation */
+.day-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.day-nav-title{font-family:var(--font-display);font-size:16px;font-weight:600}
+.day-nav-hint{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:.05em}
+.day-nav-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.day-nav-btn:disabled{opacity:.3;cursor:default}
+.day-nav-btn:not(:disabled):hover{background:var(--pass-bg)}
+@media(hover:none){.day-nav-hint{display:none}}
+@media(max-width:600px){.form-row{grid-template-columns:1fr}.form-row.three{grid-template-columns:1fr 1fr}.param-config{grid-template-columns:90px 1fr 1fr}.day-tabs{gap:4px}.day-tab{min-width:60px;padding:6px 4px}.day-tab-label{font-size:10px}}
+</style>
+</head>
+<body>
+<header class="app-header">
+  <div class="header-inner">
+    <div><div class="app-title">RxBurn<span>Scout</span></div><div class="app-subtitle">HOURLY BURN CONDITION MONITOR</div></div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
+      <button type="button" class="badge-os hdr-badge" aria-label="About open source">OPEN SOURCE<span class="info-i">&#9432;</span>
+        <span class="hdr-tip" role="tooltip"><strong>OPEN SOURCE</strong>RxBurnScout is free to use, copy, modify and share. Anyone can host their own copy or improve it &mdash; in the same spirit of mutual aid as a prescribed burn association. <a onclick="event.stopPropagation();goToView('about')">Read more in About &rarr;</a></span>
+      </button>
+      <button type="button" id="syncBadge" class="sync-indicator local hdr-badge" aria-label="Storage status"><span id="syncBadgeText">LOCAL ONLY</span><span class="info-i">&#9432;</span>
+        <span class="hdr-tip" role="tooltip" id="syncTip"></span>
+      </button>
+    </div>
+  </div>
+  <nav class="nav-tabs" id="navTabs">
+    <button class="nav-tab active" data-view="units">Burn Units</button>
+    <button class="nav-tab" data-view="analysis">Analysis</button>
+    <button class="nav-tab" data-view="settings">Settings</button>
+    <button class="nav-tab" data-view="about">About</button>
+  </nav>
+</header>
+<main class="main">
+  <div class="view active" id="view-units">
+    <div style="display:flex;justify-content:space-between;align-items:center"><div class="card-label" style="margin-bottom:0">YOUR BURN UNITS</div><button class="btn btn-primary btn-sm" onclick="openUnitModal()">+ New Unit</button></div>
+    <div id="unitsList"></div>
+    <div id="unitsEmpty" class="empty-state" style="display:none"><h3>No burn units yet</h3><p style="margin-bottom:14px">Create your first burn unit to start monitoring conditions.</p><button class="btn btn-primary" onclick="openUnitModal()">+ Create Burn Unit</button></div>
+  </div>
+  <div class="view" id="view-analysis">
+    <div id="analysisNoUnits" class="empty-state" style="display:none"><h3>No burn units configured</h3><p>Create at least one burn unit first.</p></div>
+    <div id="analysisContent" style="display:none">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div class="card-label" style="margin-bottom:0">FORECAST ANALYSIS</div><button class="btn btn-primary btn-sm" id="btnFetch" onclick="fetchForecast(true)">Refresh Forecast</button></div>
+      <div id="unitSelector" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px"></div>
+      <div id="analysisStatus"></div><div id="analysisSummary"></div>
+      <div id="dayTabs" class="day-tabs" style="display:none"></div>
+      <div id="hourlyGridContainer" style="display:none"></div>
+      <div id="analysisKey" style="display:none"></div>
+    </div>
+  </div>
+  <div class="view" id="view-settings">
+    <div class="card">
+      <div class="card-title">Cloud Sync</div>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px">Connect to an RxBurnScout sync server (a Cloudflare Worker) to sync your burn units across devices. Without this, data is stored locally in your browser only.</p>
+      <div class="form-group" style="margin-bottom:10px"><label class="form-label">SYNC SERVER URL</label><input class="form-input" id="settingsSyncUrl" placeholder="https://your-worker.your-subdomain.workers.dev"></div>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px"><button class="btn btn-primary btn-sm" onclick="connectSync()">Connect</button><button class="btn btn-secondary btn-sm" onclick="disconnectSync()">Disconnect</button><span id="syncConnStatus" style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted)"></span></div>
+      <div id="syncSection" style="display:none">
+        <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:6px">
+          <div class="card-label">SYNC TOKEN</div>
+          <p style="font-size:11px;color:var(--text-muted);margin-bottom:8px">This token identifies your data. Save it to access your units from another device.</p>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px"><input class="form-input" id="settingsToken" readonly style="font-size:11px;flex:1"><button class="btn btn-secondary btn-sm" onclick="copyToken()">Copy</button></div>
+          <div class="form-group" style="margin-bottom:10px"><label class="form-label">RESTORE FROM TOKEN</label><input class="form-input" id="restoreToken" placeholder="Paste a token from another device"></div>
+          <button class="btn btn-secondary btn-sm" onclick="restoreFromToken()">Restore</button>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:14px;margin-top:14px">
+          <div class="card-label">MANUAL SYNC</div>
+          <div style="display:flex;gap:8px"><button class="btn btn-primary btn-sm" onclick="pushToServer()">Push to Server</button><button class="btn btn-secondary btn-sm" onclick="pullFromServer()">Pull from Server</button></div>
+          <div id="syncStatus" style="margin-top:8px;font-family:var(--font-mono);font-size:10px;color:var(--text-muted)"></div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">Data Management</div>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px">Export your burn unit configurations as JSON for backup or transfer.</p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" onclick="exportData()">Export JSON</button>
+        <button class="btn btn-secondary btn-sm" onclick="document.getElementById('importFile').click()">Import JSON</button>
+        <input type="file" id="importFile" accept=".json" style="display:none" onchange="importData(event)">
+        <button class="btn btn-danger btn-sm" onclick="clearAllData()">Clear All Data</button>
+      </div>
+    </div>
+  </div>
+  <div class="view" id="view-about">
+    <div class="card"><div class="card-title">What RxBurnScout Does</div><p style="font-size:13px;line-height:1.7;color:var(--text-secondary)">A personal tool for individual land managers. Configure weather parameter windows for each burn unit, set your location, and the system checks the <strong>7-day NWS hourly forecast</strong> — identifying time windows where all conditions co-exist within your parameters for enough consecutive hours to conduct your burn.</p></div>
+    <div class="card">
+      <div class="card-label">HOW IT WORKS</div>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>1. Configure burn units</strong> — Set location, weather parameter ranges (wind speed, humidity, precipitation probability, temperature), fuel type, and minimum consecutive hours needed.</p>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>2. Fetch the NWS forecast</strong> — The app pulls hourly forecast data from the National Weather Service API for your unit's coordinates.</p>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>3. Hourly co-existence check</strong> — Each hour: do ALL parameters fall within your ranges simultaneously? No daily averaging, no percentage scoring. All or nothing.</p>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary)"><strong>4. Window detection</strong> — Consecutive all-pass hours meeting your minimum duration are flagged as potential burn windows.</p>
+    </div>
+    <div class="info-box warn"><strong>This tool identifies potential burn windows — it does not tell you when to burn.</strong> The decision always belongs to the land manager. Designed for individual use, not organizational use.</div>
+    <div class="card">
+      <div class="card-label">DATA SOURCE &amp; LIMITATIONS</div>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:8px">Forecast data from the <strong>National Weather Service API</strong> (api.weather.gov). Free, public, no key required.</p>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:8px"><strong>Available now:</strong> Wind speed, wind direction, relative humidity, precipitation probability, temperature.</p>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary)"><strong>Future versions:</strong> Mixing height, Haines Index, transport winds (require fire weather data sources). Post-burn condition monitoring. Automated email/SMS alerts.</p>
+    </div>
+    <div class="card" style="text-align:center;padding:14px"><p style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:.05em">RXBURNSCOUT IS AN OPEN SOURCE PROJECT<br>A True North Seed Project Initiative</p></div>
+  </div>
+</main>
+<div class="modal-overlay" id="unitModal">
+  <div class="modal">
+    <div class="modal-title" id="modalTitle">New Burn Unit</div>
+    <input type="hidden" id="editUnitId" value="">
+    <div class="form-row">
+      <div class="form-group"><label class="form-label">UNIT NAME</label><input class="form-input" id="unitName" placeholder="e.g. North Prairie - Unit A"></div>
+      <div class="form-group"><label class="form-label">FUEL TYPE</label><select class="form-select" id="unitFuel"><option value="Grass/Forb">Grass/Forb</option><option value="100-hr">100-hr Fuels</option><option value="1000-hr">1000-hr Fuels</option><option value="Brush">Brush</option><option value="Mixed">Mixed</option></select></div>
+    </div>
+    <div class="form-group" style="margin-bottom:10px"><label class="form-label">SEARCH LOCATION</label><div class="loc-search-wrap"><input class="form-input" id="locSearch" placeholder="Type a place name, address, or landmark…" autocomplete="off"><div class="loc-results" id="locResults"></div></div></div>
+    <div class="form-row three">
+      <div class="form-group"><label class="form-label">LATITUDE</label><input class="form-input" id="unitLat" type="number" step="any" placeholder="38.627"></div>
+      <div class="form-group"><label class="form-label">LONGITUDE</label><input class="form-input" id="unitLon" type="number" step="any" placeholder="-90.199"></div>
+      <div class="form-group"><label class="form-label">MIN HOURS</label><input class="form-input" id="unitMinHours" type="number" min="1" max="12" value="4"></div>
+    </div>
+    <div class="form-group" style="margin-bottom:12px"><label class="form-label">ACRES (optional)</label><input class="form-input" id="unitAcres" type="number" placeholder="45" style="max-width:120px"></div>
+    <div class="card-label" style="margin-top:6px">PARAMETER WINDOWS</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">All parameters must be in range simultaneously for an hour to pass.</p>
+    <div id="paramFields"></div>
+    <div class="card-label" style="margin-top:14px">WIND DIRECTION FILTER (optional)</div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:6px">Leave all unchecked to accept any wind direction.</p>
+    <div id="windDirChecks" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-secondary" onclick="closeUnitModal()">Cancel</button><button class="btn btn-primary" onclick="saveUnit()">Save Unit</button></div>
+  </div>
+</div>
+<script>
+var STORAGE_KEY='rxburnscout_units',CONFIG_KEY='rxburnscout_config';
+var UNIT_COLORS=['#E8A838','#5B8C5A','#7B9EA8','#C4534A','#8B6AB8','#4A8B8C','#B85B5B','#6B8B3D'];
+var WIND_DIRS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
+var DEFAULT_PARAMS=[
+  {key:'windSpeed',label:'Wind Speed',unit:'mph',min:4,max:15},
+  {key:'relativeHumidity',label:'Relative Humidity',unit:'%',min:25,max:55},
+  {key:'precipProbability',label:'Precip Prob.',unit:'%',min:0,max:20},
+  {key:'temperature',label:'Temperature',unit:'\u00B0F',min:30,max:90}
+];
+var units=[],config={syncUrl:'',token:''},activeView='units',selectedUnitIdx=0,forecastData={},forecastFetchedOn={},forecastRequests={},forecastRequestSequence=0,selectedDay=0,locSearchTimeout=null;
+var FORECAST_TIMEOUT_MS=15000, FORECAST_ERROR_MIN_MS=3000;
+
+function loadLocal(){try{units=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];}catch(e){units=[];}try{config=JSON.parse(localStorage.getItem(CONFIG_KEY))||{syncUrl:'',token:''};}catch(e){config={syncUrl:'',token:''};}if(config.apiUrl&&!config.syncUrl){config.syncUrl=config.apiUrl;delete config.apiUrl;}}
+function saveLocal(){localStorage.setItem(STORAGE_KEY,JSON.stringify(units));localStorage.setItem(CONFIG_KEY,JSON.stringify(config));}
+function isConnected(){return config.syncUrl&&config.token;}
+function updateSyncBadge(){
+  var el=document.getElementById('syncBadge'),txt=document.getElementById('syncBadgeText'),tip=document.getElementById('syncTip');
+  var open=el.classList.contains('open');
+  if(isConnected()){
+    el.className='sync-indicator connected hdr-badge';txt.textContent='SYNCED';
+    tip.innerHTML='<strong>SYNCED</strong>Your burn units are saved in this browser and backed up to your sync server, so you can open them on another device with your sync token. <a onclick="event.stopPropagation();goToView(\'settings\')">Sync settings &rarr;</a>';
+  }else{
+    el.className='sync-indicator local hdr-badge';txt.textContent='LOCAL ONLY';
+    tip.innerHTML='<strong>LOCAL ONLY</strong>Your burn units are saved only in this browser on this device. Clearing browser data will erase them. Export a backup, or connect a sync server to use them on other devices. <a onclick="event.stopPropagation();goToView(\'settings\')">Settings &rarr;</a>';
+  }
+  if(open)el.classList.add('open');
+}
+function goToView(view){
+  document.querySelectorAll('.hdr-badge.open').forEach(function(b){b.classList.remove('open');});
+  var tab=document.querySelector('.nav-tab[data-view="'+view+'"]');if(tab)tab.click();
+}
+// Header badges: tap/click toggles the info bubble (hover also shows it on desktop)
+document.querySelectorAll('.hdr-badge').forEach(function(b){
+  b.addEventListener('click',function(e){
+    if(e.target.closest('.hdr-tip'))return;
+    var was=b.classList.contains('open');
+    document.querySelectorAll('.hdr-badge.open').forEach(function(x){x.classList.remove('open');});
+    if(!was)b.classList.add('open');
+  });
+});
+document.addEventListener('click',function(e){if(!e.target.closest('.hdr-badge'))document.querySelectorAll('.hdr-badge.open').forEach(function(x){x.classList.remove('open');});});
+function generateToken(){var a=new Uint8Array(24);crypto.getRandomValues(a);return Array.from(a,function(b){return b.toString(16).padStart(2,'0');}).join('');}
+
+async function syncCall(method,path,body){
+  var url=config.syncUrl.replace(/\/+$/,'')+path;
+  var opts={method:method,headers:{'Content-Type':'application/json','Authorization':'Bearer '+config.token}};
+  if(body)opts.body=JSON.stringify(body);
+  var res=await fetch(url,opts);var data=await res.json();
+  if(!res.ok)throw new Error(data.error||'Sync server error '+res.status);
+  return data;
+}
+
+async function connectSync(){
+  var urlInput=document.getElementById('settingsSyncUrl'),statusEl=document.getElementById('syncConnStatus');
+  var syncUrl=urlInput.value.trim();if(!syncUrl){statusEl.textContent='Enter a URL.';return;}
+  statusEl.textContent='Connecting\u2026';
+  try{
+    var hRes=await fetch(syncUrl.replace(/\/+$/,'')+'/sync/health');if(!hRes.ok)throw new Error('Health check failed');
+    config.syncUrl=syncUrl;if(!config.token)config.token=generateToken();
+    var regRes=await fetch(syncUrl.replace(/\/+$/,'')+'/sync/auth',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({token:config.token})});
+    var regData=await regRes.json();if(!regRes.ok)throw new Error(regData.error||'Registration failed');
+    saveLocal();updateSyncBadge();
+    statusEl.textContent='Connected! '+(regData.status==='registered'?'New token registered.':'Token verified.');
+    document.getElementById('syncSection').style.display='block';document.getElementById('settingsToken').value=config.token;
+    await pushToServer();
+  }catch(err){statusEl.textContent='Error: '+err.message;}
+}
+function disconnectSync(){config.syncUrl='';saveLocal();updateSyncBadge();document.getElementById('syncConnStatus').textContent='Disconnected.';document.getElementById('syncSection').style.display='none';}
+async function pushToServer(){var s=document.getElementById('syncStatus');if(!isConnected()){s.textContent='Not connected.';return;}s.textContent='Pushing\u2026';try{var d=await syncCall('PUT','/sync/units',{units:units});s.textContent='Pushed '+d.count+' units. '+d.lastSync;}catch(e){s.textContent='Push error: '+e.message;}}
+async function pullFromServer(){var s=document.getElementById('syncStatus');if(!isConnected()){s.textContent='Not connected.';return;}s.textContent='Pulling\u2026';try{var d=await syncCall('GET','/sync/units');units=d.units||[];saveLocal();renderUnits();s.textContent='Pulled '+units.length+' units.';}catch(e){s.textContent='Pull error: '+e.message;}}
+function copyToken(){var el=document.getElementById('settingsToken');navigator.clipboard.writeText(el.value).then(function(){el.style.borderColor='var(--pass)';setTimeout(function(){el.style.borderColor='';},1000);});}
+async function restoreFromToken(){var t=document.getElementById('restoreToken').value.trim();if(!t||t.length<16){alert('Paste a valid token (16+ chars).');return;}config.token=t;saveLocal();document.getElementById('settingsToken').value=t;await pullFromServer();}
+async function autoSync(){if(!isConnected())return;try{await syncCall('PUT','/sync/units',{units:units});}catch(e){}}
+
+function exportData(){var b=new Blob([JSON.stringify({units:units,exported:new Date().toISOString()},null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='rxburnscout-units-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
+function importData(event){var f=event.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(e){try{var d=JSON.parse(e.target.result);if(!Array.isArray(d.units))throw new Error('Invalid format');units=d.units;saveLocal();renderUnits();autoSync();alert('Imported '+units.length+' units.');}catch(err){alert('Import error: '+err.message);}};r.readAsText(f);event.target.value='';}
+function clearAllData(){if(!confirm('Delete ALL burn units and settings? Cannot be undone.'))return;units=[];forecastData={};forecastFetchedOn={};saveLocal();renderUnits();autoSync();}
+
+document.getElementById('navTabs').addEventListener('click',function(e){
+  if(!e.target.classList.contains('nav-tab'))return;
+  document.querySelectorAll('.nav-tab').forEach(function(t){t.classList.remove('active');});
+  e.target.classList.add('active');activeView=e.target.dataset.view;
+  document.querySelectorAll('.view').forEach(function(v){v.classList.remove('active');});
+  document.getElementById('view-'+activeView).classList.add('active');
+  if(activeView==='analysis')renderAnalysis();if(activeView==='settings')renderSettings();
+});
+
+document.getElementById('locSearch').addEventListener('input',function(e){
+  clearTimeout(locSearchTimeout);var q=e.target.value.trim();
+  if(q.length<3){document.getElementById('locResults').classList.remove('open');return;}
+  locSearchTimeout=setTimeout(function(){searchLocation(q);},400);
+});
+async function searchLocation(query){
+  var r=document.getElementById('locResults');
+  try{
+    var res=await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(query)+'&format=json&limit=5&countrycodes=us',{headers:{'User-Agent':'RxBurnScout/1.0'}});
+    var data=await res.json();
+    if(data.length===0){r.innerHTML='<div class="loc-result" style="color:var(--text-muted);cursor:default">No results</div>';}
+    else{r.innerHTML=data.map(function(d){return '<div class="loc-result" onclick="selectLocation('+d.lat+','+d.lon+',\''+esc(d.display_name).replace(/'/g,"\\'")+'\')">'+'<div class="loc-result-name">'+esc(d.display_name.split(',').slice(0,2).join(', '))+'</div>'+'<div class="loc-result-detail">'+parseFloat(d.lat).toFixed(4)+', '+parseFloat(d.lon).toFixed(4)+'</div></div>';}).join('');}
+    r.classList.add('open');
+  }catch(e){r.innerHTML='<div class="loc-result" style="color:var(--fail);cursor:default">Search error</div>';r.classList.add('open');}
+}
+function selectLocation(lat,lon,name){document.getElementById('unitLat').value=parseFloat(lat).toFixed(5);document.getElementById('unitLon').value=parseFloat(lon).toFixed(5);document.getElementById('locSearch').value=name.split(',').slice(0,2).join(', ');document.getElementById('locResults').classList.remove('open');}
+document.addEventListener('click',function(e){if(!e.target.closest('.loc-search-wrap'))document.getElementById('locResults').classList.remove('open');});
+
+function renderUnits(){
+  var list=document.getElementById('unitsList'),empty=document.getElementById('unitsEmpty');
+  if(units.length===0){list.innerHTML='';empty.style.display='block';return;}
+  empty.style.display='none';
+  list.innerHTML=units.map(function(u,i){
+    return '<div class="unit-card" style="border-color:'+u.color+'20">'
+      +'<div class="unit-header"><div class="unit-name"><span class="unit-dot" style="background:'+u.color+'"></span>'+esc(u.name)+'</div>'
+      +'<div style="display:flex;gap:5px"><button class="btn btn-secondary btn-sm" onclick="editUnit('+i+')">Edit</button><button class="btn btn-danger btn-sm" onclick="deleteUnit('+i+')">Delete</button></div></div>'
+      +'<div class="unit-meta"><span><strong>Fuel:</strong> '+esc(u.fuel)+'</span><span><strong>Min:</strong> '+u.minHours+'hr</span>'+(u.acres?'<span><strong>Acres:</strong> '+u.acres+'</span>':'')+'<span><strong>Coords:</strong> '+u.lat.toFixed(3)+', '+u.lon.toFixed(3)+'</span></div>'
+      +'<div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:3px">'
+      +u.params.map(function(p){return '<span style="padding:2px 7px;background:'+u.color+'10;border-radius:10px;font-family:var(--font-mono);font-size:9px;color:'+u.color+'">'+esc(p.label)+': '+p.min+'\u2013'+p.max+esc(p.unit)+'</span>';}).join('')
+      +(u.windDirs&&u.windDirs.length>0?'<span style="padding:2px 7px;background:'+u.color+'10;border-radius:10px;font-family:var(--font-mono);font-size:9px;color:'+u.color+'">Dir: '+u.windDirs.join(',')+'</span>':'')
+      +'</div></div>';
+  }).join('');
+}
+
+function buildParamFields(params){var p=params||DEFAULT_PARAMS;document.getElementById('paramFields').innerHTML=p.map(function(param,i){return '<div class="param-config"><div class="param-name">'+esc(param.label)+' ('+esc(param.unit)+')</div><div class="form-group"><label class="form-label">MIN</label><input class="form-input param-min" data-idx="'+i+'" type="number" step="any" value="'+param.min+'"></div><div class="form-group"><label class="form-label">MAX</label><input class="form-input param-max" data-idx="'+i+'" type="number" step="any" value="'+param.max+'"></div></div>';}).join('');}
+function buildWindDirChecks(sel){var s=sel||[];document.getElementById('windDirChecks').innerHTML=WIND_DIRS.map(function(d){return '<label style="display:flex;align-items:center;gap:3px;font-family:var(--font-mono);font-size:10px;color:var(--text-secondary);cursor:pointer"><input type="checkbox" class="wind-dir-check" value="'+d+'"'+(s.indexOf(d)>=0?' checked':'')+'>'+d+'</label>';}).join('');}
+
+function openUnitModal(){document.getElementById('editUnitId').value='';document.getElementById('modalTitle').textContent='New Burn Unit';document.getElementById('unitName').value='';document.getElementById('unitFuel').value='Grass/Forb';document.getElementById('unitLat').value='';document.getElementById('unitLon').value='';document.getElementById('unitMinHours').value='4';document.getElementById('unitAcres').value='';document.getElementById('locSearch').value='';buildParamFields();buildWindDirChecks();document.getElementById('unitModal').classList.add('open');}
+function editUnit(idx){var u=units[idx];document.getElementById('editUnitId').value=idx;document.getElementById('modalTitle').textContent='Edit Burn Unit';document.getElementById('unitName').value=u.name;document.getElementById('unitFuel').value=u.fuel;document.getElementById('unitLat').value=u.lat;document.getElementById('unitLon').value=u.lon;document.getElementById('unitMinHours').value=u.minHours;document.getElementById('unitAcres').value=u.acres||'';document.getElementById('locSearch').value='';buildParamFields(u.params);buildWindDirChecks(u.windDirs||[]);document.getElementById('unitModal').classList.add('open');}
+function closeUnitModal(){document.getElementById('unitModal').classList.remove('open');}
+
+function saveUnit(){
+  var name=document.getElementById('unitName').value.trim(),fuel=document.getElementById('unitFuel').value;
+  var lat=parseFloat(document.getElementById('unitLat').value),lon=parseFloat(document.getElementById('unitLon').value);
+  var minHours=parseInt(document.getElementById('unitMinHours').value)||4,acres=parseInt(document.getElementById('unitAcres').value)||null;
+  if(!name){alert('Enter a unit name.');return;}if(isNaN(lat)||isNaN(lon)){alert('Enter valid coordinates or use the location search.');return;}
+  if(lat<24||lat>50||lon<-125||lon>-66){if(!confirm('Coordinates appear outside the continental US. NWS data is US-only. Continue?'))return;}
+  var params=DEFAULT_PARAMS.map(function(dp,i){var mn=document.querySelector('.param-min[data-idx="'+i+'"]'),mx=document.querySelector('.param-max[data-idx="'+i+'"]');return{key:dp.key,label:dp.label,unit:dp.unit,min:parseFloat(mn.value),max:parseFloat(mx.value)};});
+  var windDirs=Array.from(document.querySelectorAll('.wind-dir-check:checked')).map(function(c){return c.value;});
+  var editIdx=document.getElementById('editUnitId').value;
+  if(editIdx!==''){var idx=parseInt(editIdx);if(units[idx].lat!==lat||units[idx].lon!==lon){delete forecastData[units[idx].id];delete forecastFetchedOn[units[idx].id];}units[idx]=Object.assign({},units[idx],{name:name,fuel:fuel,lat:lat,lon:lon,minHours:minHours,acres:acres,params:params,windDirs:windDirs});}
+  else{var color=UNIT_COLORS[units.length%UNIT_COLORS.length];var id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);units.push({id:id,name:name,fuel:fuel,lat:lat,lon:lon,minHours:minHours,acres:acres,params:params,windDirs:windDirs,color:color});}
+  saveLocal();renderUnits();closeUnitModal();if(activeView==='analysis')renderAnalysis();autoSync();
+}
+function deleteUnit(idx){if(!confirm('Delete "'+units[idx].name+'"?'))return;delete forecastData[units[idx].id];delete forecastFetchedOn[units[idx].id];if(forecastRequests[units[idx].id]){forecastRequests[units[idx].id].controller.abort();clearTimeout(forecastRequests[units[idx].id].timeoutId);clearInterval(forecastRequests[units[idx].id].countdownIntervalId);delete forecastRequests[units[idx].id];}units.splice(idx,1);if(selectedUnitIdx>=units.length)selectedUnitIdx=Math.max(0,units.length-1);saveLocal();renderUnits();autoSync();}
+
+async function fetchNWSForecast(lat,lon,signal){
+  var options={signal:signal,headers:{'User-Agent':'RxBurnScout/1.0 (opensource@truenorthseed.org)','Accept':'application/geo+json'}};
+  var pr=await fetch('https://api.weather.gov/points/'+lat.toFixed(4)+','+lon.toFixed(4),options);
+  if(!pr.ok)throw new Error('NWS location lookup failed (HTTP '+pr.status+'). Check the unit coordinates or try again later.');
+  var pd=await pr.json();var hu=pd.properties&&pd.properties.forecastHourly;if(!hu)throw new Error('The NWS did not provide an hourly forecast for these coordinates.');
+  var fr=await fetch(hu,options);
+  if(!fr.ok)throw new Error('NWS forecast service returned HTTP '+fr.status+'. Please try again later.');
+  var data=await fr.json();if(!data.properties||!Array.isArray(data.properties.periods))throw new Error('The NWS response did not contain hourly forecast data.');
+  return data.properties.periods;
+}
+function parseNWSPeriods(periods){
+  var days={};for(var i=0;i<periods.length;i++){var p=periods[i];var dt=new Date(p.startTime);var dk=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});var h=dt.getHours();if(h<5||h>21)continue;
+  if(!days[dk])days[dk]={date:dk,sortKey:dt.toISOString().slice(0,10),hours:[]};
+  var ws=0,wsStr=p.windSpeed||'',m=wsStr.match(/(\d+)\s*to\s*(\d+)/);if(m){ws=(parseInt(m[1])+parseInt(m[2]))/2;}else{var s=wsStr.match(/(\d+)/);if(s)ws=parseInt(s[1]);}
+  days[dk].hours.push({hour:h,hourLabel:formatHour(h),windSpeed:ws,windDirection:p.windDirection||'',relativeHumidity:p.relativeHumidity?p.relativeHumidity.value:null,precipProbability:p.probabilityOfPrecipitation?p.probabilityOfPrecipitation.value:0,temperature:p.temperature||null});}
+  return Object.values(days).sort(function(a,b){return a.sortKey.localeCompare(b.sortKey);}).slice(0,7);
+}
+function formatHour(h){if(h===0)return '12a';if(h===12)return '12p';return h<12?h+'a':(h-12)+'p';}
+
+function checkHour(hd,up,wd){
+  var r={};for(var i=0;i<up.length;i++){var p=up[i],v=hd[p.key];if(v===null||v===undefined){r[p.key]={val:null,pass:true};continue;}r[p.key]={val:v,pass:v>=p.min&&v<=p.max};}
+  if(wd&&wd.length>0){var d=hd.windDirection||'';r._windDir={val:d,pass:wd.indexOf(d)>=0};}
+  var ap=true,ks=Object.keys(r);for(var j=0;j<ks.length;j++){if(!r[ks[j]].pass){ap=false;break;}}return{results:r,allPass:ap};
+}
+function findWindows(dh,up,wd,mh){var w=[],st=null,ln=0;for(var i=0;i<dh.length;i++){if(checkHour(dh[i],up,wd).allPass){if(st===null)st=i;ln++;}else{if(ln>=mh)w.push({start:st,end:st+ln-1});st=null;ln=0;}}if(ln>=mh)w.push({start:st,end:st+ln-1});return w;}
+
+function localDateKey(date){var d=date||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+function forecastIsCurrent(unit){return !!forecastData[unit.id]&&forecastFetchedOn[unit.id]===localDateKey();}
+function hideForecastDisplay(){document.getElementById('dayTabs').style.display='none';document.getElementById('hourlyGridContainer').style.display='none';document.getElementById('analysisKey').style.display='none';document.getElementById('analysisSummary').innerHTML='';}
+function updateFetchButton(){var btn=document.getElementById('btnFetch');if(!btn)return;var unit=units[selectedUnitIdx],pending=unit&&forecastRequests[unit.id];btn.disabled=!!pending;btn.innerHTML=pending?'<span class="spinner"></span> Fetching…':'Refresh Forecast';btn.title=pending?'A weather request is already in progress.':'Fetch the latest weather forecast for this unit.';}
+function showForecastError(unit,message){var st=document.getElementById('analysisStatus');st.innerHTML='<div class="info-box error"><strong>Unable to load forecast for '+esc(unit.name)+'.</strong> '+esc(message)+'</div>';}
+function waitFor(ms){return new Promise(function(resolve){setTimeout(resolve,ms);});}
+async function fetchForecast(force){
+  if(!units.length||selectedUnitIdx<0||selectedUnitIdx>=units.length)return;
+  var unit=units[selectedUnitIdx],existing=forecastRequests[unit.id];
+  if(!force&&forecastIsCurrent(unit))return;
+  if(existing&&!force)return;
+  if(existing){existing.controller.abort();clearTimeout(existing.timeoutId);clearInterval(existing.countdownIntervalId);delete forecastRequests[unit.id];}
+  var btn=document.getElementById('btnFetch'),st=document.getElementById('analysisStatus'),request={id:++forecastRequestSequence,controller:new AbortController(),startedAt:Date.now(),timedOut:false,secondsRemaining:Math.ceil(FORECAST_TIMEOUT_MS/1000)};
+  forecastRequests[unit.id]=request;updateFetchButton();hideForecastDisplay();
+  function showFetchingStatus(){if(forecastRequests[unit.id]!==request||!units[selectedUnitIdx]||units[selectedUnitIdx].id!==unit.id||activeView!=='analysis')return;st.innerHTML='<div class="info-box warn"><span class="spinner" style="border-color:rgba(139,105,20,.25);border-top-color:var(--warn);vertical-align:middle;margin-right:7px"></span>Fetching Weather Data for '+esc(unit.name)+'… <strong>'+request.secondsRemaining+'</strong></div>';}
+  showFetchingStatus();
+  request.countdownIntervalId=setInterval(function(){request.secondsRemaining=Math.max(0,Math.ceil((FORECAST_TIMEOUT_MS-(Date.now()-request.startedAt))/1000));showFetchingStatus();},250);
+  request.timeoutId=setTimeout(function(){request.timedOut=true;request.controller.abort();},FORECAST_TIMEOUT_MS);
+  try{
+    var periods=await fetchNWSForecast(unit.lat,unit.lon,request.controller.signal);
+    var days=parseNWSPeriods(periods);if(!days.length)throw new Error('The NWS returned no usable hourly forecast data.');
+    if(forecastRequests[unit.id]!==request)return;
+    forecastData[unit.id]=days;forecastFetchedOn[unit.id]=localDateKey();
+    if(units[selectedUnitIdx]&&units[selectedUnitIdx].id===unit.id&&activeView==='analysis'){
+      selectedDay=0;st.innerHTML='<div class="info-box success">'+(force?'Forecast refreshed. ':'Loaded forecast. ')+'Loaded '+days.length+' days of hourly weather data for '+esc(unit.name)+'.</div>';renderDayTabs();renderHourlyGrid();renderSummary();
+    }
+  }catch(err){
+    if(forecastRequests[unit.id]!==request)return;
+    var message=!navigator.onLine?:(request.timedOut?'No internet access. Unable to fetch weather data. Check your internet connection (and try again).':(err&&err.name==='AbortError'?'Weather request was cancelled. Select Refresh Forecast to try again.':(err&&err.message?err.message:'An unexpected error occurred while fetching weather data.')));
+    var remaining=Math.max(0,FORECAST_ERROR_MIN_MS-(Date.now()-request.startedAt));if(remaining)await waitFor(remaining);
+    if(forecastRequests[unit.id]!==request)return;
+    if(units[selectedUnitIdx]&&units[selectedUnitIdx].id===unit.id&&activeView==='analysis')showForecastError(unit,message);
+  }finally{
+    clearTimeout(request.timeoutId);clearInterval(request.countdownIntervalId);
+    if(forecastRequests[unit.id]===request){delete forecastRequests[unit.id];updateFetchButton();}
+  }
+}
+
+function renderAnalysis(){
+  var no=document.getElementById('analysisNoUnits'),co=document.getElementById('analysisContent');
+  if(units.length===0){no.style.display='block';co.style.display='none';return;}no.style.display='none';co.style.display='block';
+  if(selectedUnitIdx<0||selectedUnitIdx>=units.length)selectedUnitIdx=0;
+  document.getElementById('unitSelector').innerHTML=units.map(function(u,i){var a=i===selectedUnitIdx;return '<button class="btn '+(a?'btn-primary':'btn-secondary')+' btn-sm" onclick="'+(a?'editUnit('+i+')':'selectAnalysisUnit('+i+')')+'" title="'+(a?'Edit this unit\u2019s settings':'Switch to this unit')+'"'+(!a?' style="border:1px solid '+u.color+'40;color:'+u.color+'"':'')+'><span class="unit-dot" style="background:'+u.color+';width:7px;height:7px"></span> '+esc(u.name)+(a?'<span class="unit-pill-edit">\u270E Edit</span>':'')+'</button>';}).join('');
+  var unit=units[selectedUnitIdx];
+  if(forecastIsCurrent(unit)){renderDayTabs();renderHourlyGrid();renderSummary();document.getElementById('analysisStatus').innerHTML='';}
+  else{hideForecastDisplay();document.getElementById('analysisStatus').innerHTML='';fetchForecast(false);}
+  updateFetchButton();
+}
+function selectAnalysisUnit(idx){if(idx<0||idx>=units.length)return;selectedUnitIdx=idx;selectedDay=0;renderAnalysis();}
+function selectDay(i){
+  var unit=units[selectedUnitIdx],days=unit&&forecastData[unit.id];if(!days)return;
+  if(i<0||i>=days.length)return;
+  selectedDay=i;renderSummary();renderDayTabs();renderHourlyGrid();
+}
+// Left/right arrow keys step through days in the Analysis view
+document.addEventListener('keydown',function(e){
+  if(activeView!=='analysis')return;
+  if(document.getElementById('unitModal').classList.contains('open'))return;
+  var t=e.target.tagName;if(t==='INPUT'||t==='SELECT'||t==='TEXTAREA')return;
+  if(e.key==='ArrowLeft'){e.preventDefault();selectDay(selectedDay-1);}
+  else if(e.key==='ArrowRight'){e.preventDefault();selectDay(selectedDay+1);}
+});
+
+function renderSummary(){
+  var unit=units[selectedUnitIdx],days=forecastData[unit.id];if(!days)return;
+  var sums=days.map(function(day){return{date:day.date,windows:findWindows(day.hours,unit.params,unit.windDirs,unit.minHours)};});
+  var good=sums.filter(function(s){return s.windows.length>0;});
+  document.getElementById('analysisSummary').innerHTML='<div class="card" style="margin-bottom:10px"><div class="card-label">'+days.length+'-DAY OUTLOOK \u2014 '+esc(unit.name.toUpperCase())+'</div>'
+    +sums.map(function(s,i){var hb=s.windows.length>0;var wt=hb?s.windows.map(function(w){return days[i].hours[w.start].hourLabel+'\u2013'+days[i].hours[w.end].hourLabel+' ('+(w.end-w.start+1)+'hr)';}).join(', '):'No '+unit.minHours+'hr+ window';
+    return '<div class="summary-row'+(hb?'':' muted')+(i===selectedDay?' selected':'')+'" style="cursor:pointer;padding-left:6px;padding-right:6px" onclick="selectDay('+i+')"><div style="display:flex;align-items:center;gap:8px"><span class="status-dot '+(hb?'pass':'fail')+'"></span><span style="font-size:12px;font-weight:500">'+esc(s.date)+'</span></div><span style="font-family:var(--font-mono);font-size:10px;font-weight:600;color:'+(hb?'var(--pass)':'var(--fail)')+'">'+wt+'</span></div>';}).join('')
+    +'<div style="margin-top:10px;font-size:11px;color:var(--text-muted)">'+(good.length>0?'\uD83D\uDD25 <strong>'+good.length+'</strong> potential burn day'+(good.length>1?'s':'')+'.' :'No viable burn windows.')+'</div></div>';
+}
+
+function renderDayTabs(){
+  var unit=units[selectedUnitIdx],days=forecastData[unit.id];if(!days)return;
+  var c=document.getElementById('dayTabs');c.style.display='flex';
+  c.innerHTML=days.map(function(day,i){var w=findWindows(day.hours,unit.params,unit.windDirs,unit.minHours);var hb=w.length>0;
+  return '<button class="day-tab'+(i===selectedDay?' active':'')+(hb?'':' muted')+'" onclick="selectDay('+i+')"><div class="day-tab-label">'+esc(day.date)+'</div><div class="day-tab-status" style="color:'+(hb?'var(--pass)':'var(--fail)')+'">'+(hb?w.length+' window'+(w.length>1?'s':''):'No window')+'</div></button>';}).join('');
+}
+
+function renderHourlyGrid(){
+  var unit=units[selectedUnitIdx],days=forecastData[unit.id];if(!days||!days[selectedDay])return;
+  var day=days[selectedDay],hours=day.hours;var windows=findWindows(hours,unit.params,unit.windDirs,unit.minHours);
+  var ws=new Set();windows.forEach(function(w){for(var i=w.start;i<=w.end;i++)ws.add(i);});
+  var cols=hours.length,g='<div class="hourly-grid" style="grid-template-columns:110px repeat('+cols+',1fr)">';
+  g+='<div class="hg-header" style="font-weight:700">PARAMETER</div>';
+  hours.forEach(function(h,i){g+='<div class="hg-header" style="'+(ws.has(i)?'color:var(--pass);background:var(--pass-bg);border-radius:4px 4px 0 0':'')+'">'+h.hourLabel+'</div>';});
+  unit.params.forEach(function(param){g+='<div class="hg-label">'+esc(param.label)+'</div>';
+    hours.forEach(function(h,i){var v=h[param.key],d=v!==null&&v!==undefined?''+v:'\u2014';var p=v!==null&&v!==undefined?(v>=param.min&&v<=param.max):true;
+    g+='<div class="hg-cell '+(p?'pass':'fail')+(ws.has(i)?' in-window':'')+'">'+d+'</div>';});});
+  if(unit.windDirs&&unit.windDirs.length>0){g+='<div class="hg-label">Wind Dir</div>';hours.forEach(function(h,i){var p=unit.windDirs.indexOf(h.windDirection)>=0;g+='<div class="hg-cell '+(p?'pass':'fail')+(ws.has(i)?' in-window':'')+'">'+h.windDirection+'</div>';});}
+  g+='<div class="hg-allpass" style="color:var(--text);font-size:9px">ALL PASS</div>';
+  hours.forEach(function(h,i){var ap=checkHour(h,unit.params,unit.windDirs).allPass;g+='<div class="hg-allpass" style="color:'+(ap?'var(--pass)':'var(--fail)')+';'+(ws.has(i)?'background:var(--pass-bg-strong)':'')+'">'+(ap?'\u25CF':'\u25CB')+'</div>';});
+  g+='</div><div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">';
+  if(windows.length>0){windows.forEach(function(w){g+='<div class="window-badge found">\uD83D\uDD25 BURN WINDOW: '+hours[w.start].hourLabel+' \u2013 '+hours[w.end].hourLabel+' ('+(w.end-w.start+1)+'hrs)</div>';});}
+  else{g+='<div class="window-badge none">NO VIABLE BURN WINDOW (need '+unit.minHours+'+ consecutive hours)</div>';}
+  g+='</div>';
+  var c=document.getElementById('hourlyGridContainer');c.style.display='block';var nav='<div class="day-nav"><button class="day-nav-btn" aria-label="Previous day" onclick="selectDay('+(selectedDay-1)+')"'+(selectedDay<=0?' disabled':'')+'>\u2039</button>'
+    +'<div style="text-align:center"><div class="day-nav-title">'+esc(day.date)+'</div><div class="day-nav-hint">\u2190 \u2192 KEYS TO CHANGE DAY</div></div>'
+    +'<button class="day-nav-btn" aria-label="Next day" onclick="selectDay('+(selectedDay+1)+')"'+(selectedDay>=days.length-1?' disabled':'')+'>\u203A</button></div>';
+  c.innerHTML='<div class="card" style="margin-top:10px">'+nav+'<div class="hourly-wrap">'+g+'</div></div>';
+  var k=document.getElementById('analysisKey');k.style.display='block';k.innerHTML='<div class="info-box success" style="font-family:var(--font-mono);font-size:10px"><strong>KEY:</strong> Green=in range. Red=out of range. \u25CF=all pass. Burn windows require '+unit.minHours+'+ consecutive all-pass hours.</div>';
+}
+
+function renderSettings(){document.getElementById('settingsSyncUrl').value=config.syncUrl||'';if(isConnected()){document.getElementById('syncSection').style.display='block';document.getElementById('settingsToken').value=config.token;}}
+function esc(str){if(!str)return '';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+loadLocal();renderUnits();updateSyncBadge();
+</script>
+</body>
+</html>
