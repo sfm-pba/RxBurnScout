@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- RxBurnScout v0.1.5 — clarify forecast messaging and add map-based location selection. -->
+<!-- RxBurnScout v0.1.6 — documentation updates aligned with the README. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -22,8 +22,8 @@
 .app-header{background:linear-gradient(135deg,#3A3226 0%,#5C4E3C 40%,#4A6B49 100%);padding:24px 20px 16px;position:relative}
 .app-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");opacity:.5}
 .header-inner{position:relative;display:flex;justify-content:space-between;align-items:flex-start}
-.app-title{font-family:var(--font-display);font-size:24px;font-weight:700;color:#F5F0E8;line-height:1.1;letter-spacing:-.02em}.app-title span{color:var(--accent)}
-.app-title-link{display:inline-block;border:0;background:transparent;text-align:left;cursor:pointer;padding:0;font:inherit;color:inherit}.app-title-link:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:3px}
+.app-title{font-family:var(--font-display);font-size:30px;font-weight:700;color:#F5F0E8;line-height:1.1;letter-spacing:-.02em}.app-title span{color:var(--accent)}
+.app-title-link{display:inline-block;border:0;background:transparent;text-align:left;cursor:pointer;padding:0;font-family:var(--font-display);font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.02em;color:#F5F0E8}.app-title-link:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:3px}
 .app-subtitle{font-family:var(--font-mono);font-size:9px;color:rgba(245,240,232,.5);margin-top:3px;letter-spacing:.1em}
 .badge-os{padding:3px 8px;background:rgba(245,240,232,.1);border-radius:16px;font-family:var(--font-mono);font-size:8px;color:rgba(245,240,232,.5);border:1px solid rgba(245,240,232,.08);letter-spacing:.05em}
 .nav-tabs{display:flex;gap:3px;margin-top:14px;overflow-x:auto;padding-bottom:2px;position:relative}
@@ -148,7 +148,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
     <div><button type="button" class="app-title app-title-link" onclick="goToView('about')" aria-label="RxBurnScout — open About page">RxBurn<span>Scout</span></button><div class="app-subtitle">HOURLY BURN CONDITION MONITOR</div></div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px">
       <button type="button" class="badge-os hdr-badge" aria-label="About open source">OPEN SOURCE<span class="info-i">&#9432;</span>
-        <span class="hdr-tip" role="tooltip"><strong>OPEN SOURCE</strong>RxBurnScout is free to use, copy, modify and share. Anyone can host their own copy or improve it &mdash; in the same spirit of mutual aid as a prescribed burn association. <a onclick="event.stopPropagation();goToView('about')">Read more in About &rarr;</a></span>
+        <span class="hdr-tip" role="tooltip"><strong>OPEN SOURCE</strong>RxBurnScout is free to use, copy, modify and share. Anyone can host their own copy or improve it &mdash; in the same spirit of mutual aid as a prescribed burn association. <a href="https://github.com/sfm-pba/RxBurnScout" target="_blank" rel="noopener noreferrer">Visit our GitHub repo &rarr;</a></span>
       </button>
       <button type="button" id="syncBadge" class="sync-indicator local hdr-badge" aria-label="Storage status"><span id="syncBadgeText">LOCAL ONLY</span><span class="info-i">&#9432;</span>
         <span class="hdr-tip" role="tooltip" id="syncTip"></span>
@@ -217,7 +217,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
   </div>
   <!-- About view: purpose, workflow, data source, and limitations. -->
   <div class="view" id="view-about">
-    <div class="card"><div class="card-title">What RxBurnScout Does</div><p style="font-size:13px;line-height:1.7;color:var(--text-secondary)">A personal tool for individual land managers. Configure weather parameter windows for each burn unit, set your location, and the system checks the <strong>7-day NWS hourly forecast</strong> — identifying time windows where all conditions co-exist within your parameters for enough consecutive hours to conduct your burn.</p></div>
+    <div class="card"><div class="card-title">What RxBurnScout Does</div><p style="font-size:13px;line-height:1.7;color:var(--text-secondary)">A personal tool for individual land managers. You enter desired weather conditions for your burn unit(s). RxBurnScout highlights times when all those conditions will be met based on the 7-day National Weather Service forecast.</p></div>
     <div class="card">
       <div class="card-label">HOW IT WORKS</div>
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>1. Configure burn units</strong> — Set a unit name and location, weather parameter ranges (wind speed, humidity, precipitation probability, temperature), and the minimum consecutive hours needed.</p>
@@ -232,7 +232,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:8px"><strong>Available now:</strong> Wind speed, wind direction, relative humidity, precipitation probability, temperature.</p>
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary)"><strong>Future versions:</strong> Mixing height, Haines Index, transport winds (require fire weather data sources). Post-burn condition monitoring. Automated email/SMS alerts.</p>
     </div>
-    <div class="card" style="text-align:center;padding:14px"><p style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:.05em">RXBURNSCOUT IS AN OPEN SOURCE PROJECT<br>A True North Seed Project Initiative</p></div>
+    <div class="card" style="text-align:center;padding:14px"><p style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:.05em">RXBURNSCOUT IS AN OPEN SOURCE PROJECT<br>A True North Seed Project Initiative<br>Hosted by Saint Francois Mountains Prescribed Burn Association</p></div>
   </div>
 </main>
 <!-- Modal form used for both creating a new unit and editing an existing one. -->
@@ -244,8 +244,8 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
       <div class="form-group"><label class="form-label">UNIT NAME</label><input class="form-input" id="unitName" placeholder="e.g. North Prairie - Unit A"></div>
       <div class="form-group"><div class="form-label burn-window-label"><label for="unitMinHours">Burn Window</label><details class="burn-window-help"><summary aria-label="Explain Burn Window" title="What is a Burn Window?">i</summary><div class="burn-window-tip" role="tooltip"><strong>WHAT IS A BURN WINDOW?</strong>A burn window is a period when the forecast meets all of your specified weather criteria.<br><br>This setting determines the minimum number of <b>consecutive hours</b> those conditions must be met for RxBurnScout to identify a qualifying window.<br><br>For example, a setting of 4 hours means that all specified criteria must be satisfied for at least four consecutive forecast hours. If even one criterion fails during an hour, that hour does not count toward the required duration.<br><br>This identifies a potential forecast window; it does not guarantee that conditions on the ground are suitable or that a burn should proceed.</div></details></div><div class="number-unit-wrap"><input class="form-input" id="unitMinHours" type="number" min="1" max="12" value="4"><span class="number-unit-suffix" aria-hidden="true">hours</span></div></div>
     </div>
-    <div class="form-group" style="margin-bottom:10px"><label class="form-label" for="locSearch">FIND COORDINATES BY LOCATION</label><p class="location-help">Search for a nearby town, address, or landmark to jump to the general area. Then click the map to choose a representative point for the weather forecast.</p><div class="loc-search-wrap"><input class="form-input" id="locSearch" placeholder="e.g., Farmington, Missouri" autocomplete="off"><div class="loc-results" id="locResults"></div></div></div>
-    <div class="form-group" style="margin-bottom:10px"><label class="form-label" for="locationMap">SELECT A POINT ON THE MAP</label><div id="locationMap" role="application" aria-label="Map for selecting forecast coordinates"></div><div class="map-coordinates" id="mapCoordinates">Selected coordinates: none</div><p class="map-attribution-note">The selected point is used to request an NWS forecast. Nearby points may use the same forecast grid, and a map selection does not guarantee site-specific weather accuracy.</p></div>
+    <div class="form-group" style="margin-bottom:10px"><div class="form-label burn-window-label"><label for="locSearch">FIND COORDINATES BY LOCATION</label><details class="burn-window-help"><summary aria-label="Explain Find Coordinates" title="How does location search work?">i</summary><div class="burn-window-tip" role="tooltip"><strong>FIND COORDINATES</strong>Search for a nearby town, address, or landmark to jump to the general area. Then click the map to choose a representative point for the weather forecast.</div></details></div><div class="loc-search-wrap"><input class="form-input" id="locSearch" placeholder="e.g., Farmington, Missouri" autocomplete="off"><div class="loc-results" id="locResults"></div></div></div>
+    <div class="form-group" style="margin-bottom:10px"><div class="form-label burn-window-label"><label for="locationMap">SELECT A POINT ON THE MAP</label><details class="burn-window-help"><summary aria-label="Explain Selected Coordinates" title="What do the selected coordinates mean?">i</summary><div class="burn-window-tip" role="tooltip"><strong>SELECTED COORDINATES</strong>The selected point is used to request a forecast from the National Weather Service.</div></details></div><div id="locationMap" role="application" aria-label="Map for selecting forecast coordinates"></div><div class="map-coordinates" id="mapCoordinates">Selected coordinates: none</div></div>
     <div class="form-row three">
       <div class="form-group"><label class="form-label" for="unitLat">LATITUDE</label><input class="form-input" id="unitLat" type="number" step="any" placeholder="38.63"></div>
       <div class="form-group"><label class="form-label" for="unitLon">LONGITUDE</label><input class="form-input" id="unitLon" type="number" step="any" placeholder="-90.20"></div>
@@ -283,7 +283,7 @@ var DEFAULT_PARAMS=[
 ];
 // In-memory application state. 'units' and 'config' are persisted locally;
 // forecast data and active selections are temporary browser-session state.
-var units=[],config={syncUrl:'',token:''},activeView='units',selectedUnitIdx=0,forecastData={},forecastFetchedOn={},forecastRequests={},forecastRequestSequence=0,selectedDay=0,locSearchTimeout=null;
+var units=[],config={syncUrl:'',token:''},activeView='units',selectedUnitIdx=0,forecastData={},forecastFetchedOn={},forecastFetchedAt={},forecastRequests={},forecastRequestSequence=0,selectedDay=0,locSearchTimeout=null,forecastAgeInterval=null;
 // Prevent a weather request from hanging indefinitely. The minimum error display
 // time avoids an error message flashing too quickly to read.
 var FORECAST_TIMEOUT_MS=15000, FORECAST_ERROR_MIN_MS=3000;
@@ -616,6 +616,11 @@ function findWindows(dh,up,wd,mh){
 function localDateKey(date){var d=date||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
 // A unit forecast is considered current when data exists and was fetched today.
 function forecastIsCurrent(unit){return !!forecastData[unit.id]&&forecastFetchedOn[unit.id]===localDateKey();}
+// Format the elapsed time since the last successful forecast request without refetching data.
+function formatForecastAge(timestamp){var seconds=Math.max(0,Math.floor((Date.now()-timestamp)/1000));if(seconds<60)return 'just now';var minutes=Math.floor(seconds/60);if(minutes<60)return minutes+' minute'+(minutes===1?'':'s')+' ago';var hours=Math.floor(minutes/60);if(hours<24)return hours+' hour'+(hours===1?'':'s')+' ago';var days=Math.floor(hours/24);return days+' day'+(days===1?'':'s')+' ago';}
+function renderForecastRefreshStatus(unit){var st=document.getElementById('analysisStatus'),stamp=forecastFetchedAt[unit.id];if(!stamp){st.innerHTML='';return;}st.innerHTML='<div class="info-box success" id="forecastRefreshMessage">Forecast refreshed '+formatForecastAge(stamp)+'.</div>';}
+function updateForecastRefreshAge(){var unit=units[selectedUnitIdx];if(unit&&activeView==='analysis'&&forecastData[unit.id]&&forecastFetchedAt[unit.id])renderForecastRefreshStatus(unit);}
+if(!forecastAgeInterval)forecastAgeInterval=setInterval(updateForecastRefreshAge,30000);
 // Hide forecast results while a new request is underway or when results are unavailable.
 function hideForecastDisplay(){document.getElementById('dayTabs').style.display='none';document.getElementById('hourlyGridContainer').style.display='none';document.getElementById('analysisKey').style.display='none';document.getElementById('analysisSummary').innerHTML='';}
 // Disable repeated refresh clicks while this unit already has a request in flight.
@@ -645,9 +650,9 @@ async function fetchForecast(force){
     // If another request replaced this one, ignore its late result rather than letting
     // an older response overwrite newer state.
     if(forecastRequests[unit.id]!==request)return;
-    forecastData[unit.id]=days;forecastFetchedOn[unit.id]=localDateKey();
+    forecastData[unit.id]=days;forecastFetchedOn[unit.id]=localDateKey();forecastFetchedAt[unit.id]=Date.now();
     if(units[selectedUnitIdx]&&units[selectedUnitIdx].id===unit.id&&activeView==='analysis'){
-      selectedDay=0;st.innerHTML='<div class="info-box success">'+(force?'Forecast refreshed. ':'Loaded forecast. ')+'Loaded '+days.length+' days of hourly weather data for '+esc(unit.name)+'.</div>';renderDayTabs();renderHourlyGrid();renderSummary();
+      selectedDay=0;renderForecastRefreshStatus(unit);renderDayTabs();renderHourlyGrid();renderSummary();
     }
   }catch(err){
     if(forecastRequests[unit.id]!==request)return;
@@ -670,7 +675,7 @@ function renderAnalysis(){
   if(selectedUnitIdx<0||selectedUnitIdx>=units.length)selectedUnitIdx=0;
   document.getElementById('unitSelector').innerHTML=units.map(function(u,i){var a=i===selectedUnitIdx;return '<button class="btn '+(a?'btn-primary':'btn-secondary')+' btn-sm" onclick="'+(a?'editUnit('+i+')':'selectAnalysisUnit('+i+')')+'" title="'+(a?'Edit this unit\u2019s settings':'Switch to this unit')+'">'+esc(u.name)+(a?'<span class="unit-pill-edit">\u270E Edit</span>':'')+'</button>';}).join('');
   var unit=units[selectedUnitIdx];
-  if(forecastIsCurrent(unit)){renderDayTabs();renderHourlyGrid();renderSummary();document.getElementById('analysisStatus').innerHTML='';}
+  if(forecastIsCurrent(unit)){renderForecastRefreshStatus(unit);renderDayTabs();renderHourlyGrid();renderSummary();}
   else{hideForecastDisplay();document.getElementById('analysisStatus').innerHTML='';fetchForecast(false);}
   updateFetchButton();
 }
@@ -699,9 +704,9 @@ function renderSummary(){
   var sums=days.map(function(day){return{date:day.date,windows:findWindows(day.hours,unit.params,unit.windDirs,unit.minHours)};});
   var good=sums.filter(function(s){return s.windows.length>0;});
   document.getElementById('analysisSummary').innerHTML='<div class="card" style="margin-bottom:10px"><div class="card-label">'+days.length+'-DAY OUTLOOK \u2014 '+esc(unit.name.toUpperCase())+'</div>'
+    +'<div style="margin:0 0 10px;font-size:11px;color:var(--text-muted)">'+(good.length>0?'🔥 <strong>'+good.length+'</strong> Potential burn days this week.':'0 Potential burn days this week.')+'</div>'
     +sums.map(function(s,i){var hb=s.windows.length>0;var wt=hb?s.windows.map(function(w){return days[i].hours[w.start].hourLabel+'\u2013'+days[i].hours[w.end].hourLabel+' ('+(w.end-w.start+1)+'hr)';}).join(', '):'No '+unit.minHours+'hr+ window';
-    return '<div class="summary-row'+(hb?'':' muted')+(i===selectedDay?' selected':'')+'" style="cursor:pointer;padding-left:6px;padding-right:6px" onclick="selectDay('+i+')"><div style="display:flex;align-items:center;gap:8px"><span class="status-dot '+(hb?'pass':'fail')+'"></span><span style="font-size:12px;font-weight:500">'+esc(s.date)+'</span></div><span style="font-family:var(--font-mono);font-size:10px;font-weight:600;color:'+(hb?'var(--pass)':'var(--fail)')+'">'+wt+'</span></div>';}).join('')
-    +'<div style="margin-top:10px;font-size:11px;color:var(--text-muted)">'+(good.length>0?'🔥 <strong>'+good.length+'</strong> Potential burn days this week.':'0 Potential burn days this week.')+'</div></div>';
+    return '<div class="summary-row'+(hb?'':' muted')+(i===selectedDay?' selected':'')+'" style="cursor:pointer;padding-left:6px;padding-right:6px" onclick="selectDay('+i+')"><div style="display:flex;align-items:center;gap:8px"><span class="status-dot '+(hb?'pass':'fail')+'"></span><span style="font-size:12px;font-weight:500">'+esc(s.date)+'</span></div><span style="font-family:var(--font-mono);font-size:10px;font-weight:600;color:'+(hb?'var(--pass)':'var(--fail)')+'">'+wt+'</span></div>';}).join('')+'</div>';
 }
 
 // Build one selectable tab per forecast day and show whether it contains a window.
