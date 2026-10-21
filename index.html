@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v0.1.7';
-// v0.1.7 changes: display the version near the app title; improve wind-direction
-// accept/reject controls; save a unit and go directly to its analysis; support Esc to cancel;
-// navigate location-search results with the keyboard.
+var RXBURNSCOUT_VERSION='v0.1.8';
+// v0.1.8 revisions in this chat: display orange ND for unavailable weather values,
+// fill gaps between returned hourly periods with ND columns, and prevent missing data
+// from counting as a passing hour; move both burn-window and no-window notices below the day title.
+// Also use the burn site's NWS time zone for forecast dates/hours, start tomorrow after local noon,
+// and remove the keyboard-navigation hint from daily detail.
 </script>
-<!-- RxBurnScout v0.1.7 — version display and unit-editor improvements. -->
+<!-- RxBurnScout v0.1.8 — hourly no-data indicators and forecast-detail layout revisions. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -89,7 +91,7 @@ var RXBURNSCOUT_VERSION='v0.1.7';
 .hg-header{padding:4px 2px;text-align:center;font-family:var(--font-mono);font-weight:500;font-size:9px;color:var(--text-muted)}
 .hg-label{padding:3px 6px;font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--text-secondary);display:flex;align-items:center}
 .hg-cell{padding:3px 2px;text-align:center;font-family:var(--font-mono);font-size:10px;font-weight:500;border-radius:2px}
-.hg-cell.pass{color:var(--pass);background:rgba(91,140,90,.05)}.hg-cell.fail{color:var(--fail);background:rgba(196,83,74,.05)}
+.hg-cell.pass{color:var(--pass);background:rgba(91,140,90,.05)}.hg-cell.fail{color:var(--fail);background:rgba(196,83,74,.05)}.hg-cell.no-data{color:#C87512;background:rgba(232,168,56,.13);font-weight:700}
 .hg-cell.in-window{background:rgba(91,140,90,.12)}.hg-cell.fail.in-window{background:rgba(196,83,74,.1)}
 .hg-allpass{padding:5px 2px;text-align:center;font-family:var(--font-mono);font-size:12px;font-weight:700;border-top:2px solid var(--border-strong);margin-top:2px}
 .window-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;font-family:var(--font-mono);font-size:11px;font-weight:600}
@@ -142,11 +144,9 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
 /* Day navigation */
 .day-nav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
 .day-nav-title{font-family:var(--font-display);font-size:16px;font-weight:600}
-.day-nav-hint{font-family:var(--font-mono);font-size:9px;color:var(--text-muted);letter-spacing:.05em}
 .day-nav-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .day-nav-btn:disabled{opacity:.3;cursor:default}
 .day-nav-btn:not(:disabled):hover{background:var(--pass-bg)}
-@media(hover:none){.day-nav-hint{display:none}}
 /* On narrow screens, stack form fields and tighten the day selector. */
 @media(max-width:600px){.form-row{grid-template-columns:1fr}.form-row.three{grid-template-columns:1fr 1fr}.param-config{grid-template-columns:90px 1fr 1fr}.day-tabs{gap:4px}.day-tab{min-width:60px;padding:6px 4px}.day-tab-label{font-size:10px}}
 </style>
@@ -293,7 +293,7 @@ var DEFAULT_PARAMS=[
 ];
 // In-memory application state. 'units' and 'config' are persisted locally;
 // forecast data and active selections are temporary browser-session state.
-var units=[],config={syncUrl:'',token:''},activeView='units',selectedUnitIdx=0,forecastData={},forecastFetchedOn={},forecastFetchedAt={},forecastRequests={},forecastRequestSequence=0,selectedDay=0,locSearchTimeout=null,forecastAgeInterval=null;
+var units=[],config={syncUrl:'',token:''},activeView='units',selectedUnitIdx=0,forecastData={},forecastTimeZones={},forecastFetchedOn={},forecastFetchedAt={},forecastRequests={},forecastRequestSequence=0,selectedDay=0,locSearchTimeout=null,forecastAgeInterval=null;
 // Prevent a weather request from hanging indefinitely. The minimum error display
 // time avoids an error message flashing too quickly to read.
 var FORECAST_TIMEOUT_MS=15000, FORECAST_ERROR_MIN_MS=3000;
@@ -583,20 +583,30 @@ async function fetchNWSForecast(lat,lon,signal){
   var options={signal:signal,headers:{'User-Agent':'RxBurnScout/1.0 (opensource@truenorthseed.org)','Accept':'application/geo+json'}};
   var pr=await fetch('https://api.weather.gov/points/'+lat.toFixed(4)+','+lon.toFixed(4),options);
   if(!pr.ok)throw new Error('NWS location lookup failed (HTTP '+pr.status+'). Check the unit coordinates or try again later.');
-  var pd=await pr.json();var hu=pd.properties&&pd.properties.forecastHourly;if(!hu)throw new Error('The NWS did not provide an hourly forecast for these coordinates.');
+  var pd=await pr.json();var props=pd.properties||{},hu=props.forecastHourly,timeZone=props.timeZone;if(!hu)throw new Error('The NWS did not provide an hourly forecast for these coordinates.');if(!timeZone)throw new Error('The NWS did not provide a time zone for these coordinates.');
   var fr=await fetch(hu,options);
   if(!fr.ok)throw new Error('NWS forecast service returned HTTP '+fr.status+'. Please try again later.');
   var data=await fr.json();if(!data.properties||!Array.isArray(data.properties.periods))throw new Error('The NWS response did not contain hourly forecast data.');
-  return data.properties.periods;
+  return {periods:data.properties.periods,timeZone:timeZone};
 }
-// Convert raw NWS period objects into the smaller data structure used by the UI.
-// This implementation keeps local daytime hours from 5 a.m. through 9 p.m.,
-// groups them by displayed date, and returns at most seven days.
-function parseNWSPeriods(periods){
-  var days={};for(var i=0;i<periods.length;i++){var p=periods[i];var dt=new Date(p.startTime);var dk=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});var h=dt.getHours();if(h<5||h>21)continue;
-  if(!days[dk])days[dk]={date:dk,sortKey:dt.toISOString().slice(0,10),hours:[]};
+// Extract date/time parts in the burn site's NWS time zone, never the browser's zone.
+function zonedDateParts(date,timeZone){var parts=new Intl.DateTimeFormat('en-US',{timeZone:timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date),out={};parts.forEach(function(p){if(p.type!=='literal')out[p.type]=p.value;});return {year:out.year,month:out.month,day:out.day,hour:parseInt(out.hour,10),minute:parseInt(out.minute,10),dateKey:out.year+'-'+out.month+'-'+out.day};}
+function localDateKey(timeZone,date){if(timeZone)return zonedDateParts(date||new Date(),timeZone).dateKey;var d=date||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
+// Convert raw NWS periods into daily data using the burn site's time zone. Only
+// 5 a.m.–9 p.m. local hours are eligible. After local noon, omit the partial
+// current day so the available forecast is used for the next seven calendar days.
+function parseNWSPeriods(periods,timeZone,now){
+  var current=zonedDateParts(now||new Date(),timeZone),skipToday=current.hour>12||(current.hour===12&&current.minute>0),days={};
+  for(var i=0;i<periods.length;i++){var p=periods[i],dt=new Date(p.startTime),parts=zonedDateParts(dt,timeZone),h=parts.hour;
+  if(h<5||h>21||(skipToday&&parts.dateKey===current.dateKey))continue;
+  var dk=new Intl.DateTimeFormat('en-US',{timeZone:timeZone,weekday:'short',month:'short',day:'numeric'}).format(dt);
+  if(!days[dk])days[dk]={date:dk,sortKey:parts.dateKey,weekday:new Intl.DateTimeFormat('en-US',{timeZone:timeZone,weekday:'long'}).format(dt),hours:[]};
   var ws=0,wsStr=p.windSpeed||'',m=wsStr.match(/(\d+)\s*to\s*(\d+)/);if(m){ws=(parseInt(m[1])+parseInt(m[2]))/2;}else{var s=wsStr.match(/(\d+)/);if(s)ws=parseInt(s[1]);}
-  days[dk].hours.push({hour:h,hourLabel:formatHour(h),windSpeed:ws,windDirection:p.windDirection||'',relativeHumidity:p.relativeHumidity?p.relativeHumidity.value:null,precipProbability:p.probabilityOfPrecipitation?p.probabilityOfPrecipitation.value:0,temperature:p.temperature||null});}
+  var temp=p.temperature;if(temp&&typeof temp==='object')temp=temp.value; if(temp===undefined)temp=null;
+  days[dk].hours.push({hour:h,hourLabel:formatHour(h),windSpeed:wsStr?ws:null,windDirection:p.windDirection||'',relativeHumidity:p.relativeHumidity&&p.relativeHumidity.value!==null?p.relativeHumidity.value:null,precipProbability:p.probabilityOfPrecipitation&&p.probabilityOfPrecipitation.value!==null?p.probabilityOfPrecipitation.value:null,temperature:temp});}
+  // Every displayed day uses the same 5 a.m.–9 p.m. grid. Where the NWS has not
+  // supplied a period for an hour, show an ND placeholder rather than hiding the hour.
+  Object.keys(days).forEach(function(key){var day=days[key],byHour={};day.hours.forEach(function(hour){byHour[hour.hour]=hour;});var filled=[];for(var hourNum=5;hourNum<=21;hourNum++){filled.push(byHour[hourNum]||{hour:hourNum,hourLabel:formatHour(hourNum),windSpeed:null,windDirection:'',relativeHumidity:null,precipProbability:null,temperature:null,noData:true});}day.hours=filled;});
   return Object.values(days).sort(function(a,b){return a.sortKey.localeCompare(b.sortKey);}).slice(0,7);
 }
 // Convert a 24-hour clock hour to compact labels such as 9a, 12p, or 4p.
@@ -614,10 +624,10 @@ function checkHour(hd,up,wd,wdFilterEnabled){
   for(var i=0;i<up.length;i++){
     var p=up[i],v=hd[p.key];
 
-    // Existing policy: absent values are recorded as passing rather than failing.
-    // This can affect a burn-window result and is worth reviewing as a separate issue.
+    // Missing weather data cannot verify that a criterion is satisfied, so it fails
+    // this hour rather than silently counting as a pass toward a burn window.
     if(v===null||v===undefined){
-      r[p.key]={val:null,pass:true};
+      r[p.key]={val:null,pass:false};
       continue;
     }
 
@@ -662,9 +672,8 @@ function findWindows(dh,up,wd,mh,wdFilterEnabled){
   return w;
 }
 
-function localDateKey(date){var d=date||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-// A unit forecast is considered current when data exists and was fetched today.
-function forecastIsCurrent(unit){return !!forecastData[unit.id]&&forecastFetchedOn[unit.id]===localDateKey();}
+// A unit forecast is considered current when data exists and was fetched today at the burn site.
+function forecastIsCurrent(unit){var tz=forecastTimeZones[unit.id];return !!forecastData[unit.id]&&!!tz&&forecastFetchedOn[unit.id]===localDateKey(tz);}
 // Format the elapsed time since the last successful forecast request without refetching data.
 function formatForecastAge(timestamp){var seconds=Math.max(0,Math.floor((Date.now()-timestamp)/1000));if(seconds<60)return 'just now';var minutes=Math.floor(seconds/60);if(minutes<60)return minutes+' minute'+(minutes===1?'':'s')+' ago';var hours=Math.floor(minutes/60);if(hours<24)return hours+' hour'+(hours===1?'':'s')+' ago';var days=Math.floor(hours/24);return days+' day'+(days===1?'':'s')+' ago';}
 function renderForecastRefreshStatus(unit){var st=document.getElementById('analysisStatus'),stamp=forecastFetchedAt[unit.id];if(!stamp){st.innerHTML='';return;}st.innerHTML='<div class="info-box success" id="forecastRefreshMessage">Forecast refreshed '+formatForecastAge(stamp)+'.</div>';}
@@ -694,12 +703,12 @@ async function fetchForecast(force){
   request.timeoutId=setTimeout(function(){request.timedOut=true;request.controller.abort();},FORECAST_TIMEOUT_MS);
   try{
     // Await the network request; execution resumes here when the promise resolves.
-    var periods=await fetchNWSForecast(unit.lat,unit.lon,request.controller.signal);
-    var days=parseNWSPeriods(periods);if(!days.length)throw new Error('The NWS returned no usable hourly forecast data.');
+    var result=await fetchNWSForecast(unit.lat,unit.lon,request.controller.signal);
+    var days=parseNWSPeriods(result.periods,result.timeZone);if(!days.length)throw new Error('The NWS returned no usable hourly forecast data for the selected outlook period.');
     // If another request replaced this one, ignore its late result rather than letting
     // an older response overwrite newer state.
     if(forecastRequests[unit.id]!==request)return;
-    forecastData[unit.id]=days;forecastFetchedOn[unit.id]=localDateKey();forecastFetchedAt[unit.id]=Date.now();
+    forecastData[unit.id]=days;forecastTimeZones[unit.id]=result.timeZone;forecastFetchedOn[unit.id]=localDateKey(result.timeZone);forecastFetchedAt[unit.id]=Date.now();
     if(units[selectedUnitIdx]&&units[selectedUnitIdx].id===unit.id&&activeView==='analysis'){
       selectedDay=0;renderForecastRefreshStatus(unit);renderDayTabs();renderHourlyGrid();renderSummary();
     }
@@ -777,20 +786,20 @@ function renderHourlyGrid(){
   g+='<div class="hg-header" style="font-weight:700">PARAMETER</div>';
   hours.forEach(function(h,i){g+='<div class="hg-header" style="'+(ws.has(i)?'color:var(--pass);background:var(--pass-bg);border-radius:4px 4px 0 0':'')+'">'+h.hourLabel+'</div>';});
   unit.params.forEach(function(param){g+='<div class="hg-label">'+esc(param.label)+'</div>';
-    hours.forEach(function(h,i){var v=h[param.key],d=v!==null&&v!==undefined?''+v:'\u2014';var p=v!==null&&v!==undefined?(v>=param.min&&v<=param.max):true;
-    g+='<div class="hg-cell '+(p?'pass':'fail')+(ws.has(i)?' in-window':'')+'">'+d+'</div>';});});
-  if(unit.windDirsFilterEnabled===true||(unit.windDirs&&unit.windDirs.length>0)){g+='<div class="hg-label">Wind Dir</div>';hours.forEach(function(h,i){var p=(unit.windDirs||[]).indexOf(h.windDirection)>=0;g+='<div class="hg-cell '+(p?'pass':'fail')+(ws.has(i)?' in-window':'')+'">'+h.windDirection+'</div>';});}
+    hours.forEach(function(h,i){var v=h[param.key],hasData=v!==null&&v!==undefined,d=hasData?''+v:'ND',p=hasData&&(v>=param.min&&v<=param.max);
+    g+='<div class="hg-cell '+(hasData?(p?'pass':'fail'):'no-data')+(ws.has(i)?' in-window':'')+'">'+d+'</div>';});});
+  if(unit.windDirsFilterEnabled===true||(unit.windDirs&&unit.windDirs.length>0)){g+='<div class="hg-label">Wind Dir</div>';hours.forEach(function(h,i){var hasData=!!h.windDirection,p=hasData&&(unit.windDirs||[]).indexOf(h.windDirection)>=0;g+='<div class="hg-cell '+(hasData?(p?'pass':'fail'):'no-data')+(ws.has(i)?' in-window':'')+'">'+(hasData?h.windDirection:'ND')+'</div>';});}
   g+='<div class="hg-allpass" style="color:var(--text);font-size:9px">ALL PASS</div>';
   hours.forEach(function(h,i){var ap=checkHour(h,unit.params,unit.windDirs,unit.windDirsFilterEnabled).allPass;g+='<div class="hg-allpass" style="color:'+(ap?'var(--pass)':'var(--fail)')+';'+(ws.has(i)?'background:var(--pass-bg-strong)':'')+'">'+(ap?'\u25CF':'\u25CB')+'</div>';});
-  g+='</div><div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">';
-  if(windows.length>0){windows.forEach(function(w){g+='<div class="window-badge found">\uD83D\uDD25 BURN WINDOW: '+hours[w.start].hourLabel+' \u2013 '+hours[w.end].hourLabel+' ('+(w.end-w.start+1)+'hrs)</div>';});}
-  else{var selectedWeekday=new Date(day.sortKey+'T12:00:00').toLocaleDateString('en-US',{weekday:'long'});g+='<div class="window-badge none">No viable burn windows in '+selectedWeekday+'&#39;s weather forecast (need '+unit.minHours+'+ consecutive hours).</div>';}
   g+='</div>';
+  var windowMessage='';
+  if(windows.length>0){windowMessage='<div style="margin-top:5px;display:flex;gap:6px;justify-content:center;flex-wrap:wrap">';windows.forEach(function(w){windowMessage+='<div class="window-badge found">\uD83D\uDD25 BURN WINDOW: '+hours[w.start].hourLabel+' \u2013 '+hours[w.end].hourLabel+' ('+(w.end-w.start+1)+'hrs)</div>';});windowMessage+='</div>';}
+  else{windowMessage='<div class="window-badge none" style="margin-top:5px;justify-content:center">No viable burn windows in '+esc(day.weekday||day.date.split(',')[0])+ '&#39;s weather forecast (need '+unit.minHours+'+ consecutive hours).</div>';}
   var c=document.getElementById('hourlyGridContainer');c.style.display='block';var nav='<div class="day-nav"><button class="day-nav-btn" aria-label="Previous day" onclick="selectDay('+(selectedDay-1)+')"'+(selectedDay<=0?' disabled':'')+'>\u2039</button>'
-    +'<div style="text-align:center"><div class="day-nav-title">'+esc(day.date)+'</div><div class="day-nav-hint">\u2190 \u2192 KEYS TO CHANGE DAY</div></div>'
+    +'<div style="text-align:center"><div class="day-nav-title">'+esc(day.date)+'</div>'+windowMessage+'</div>'
     +'<button class="day-nav-btn" aria-label="Next day" onclick="selectDay('+(selectedDay+1)+')"'+(selectedDay>=days.length-1?' disabled':'')+'>\u203A</button></div>';
   c.innerHTML='<div class="card" style="margin-top:10px">'+nav+'<div class="hourly-wrap">'+g+'</div></div>';
-  var k=document.getElementById('analysisKey');k.style.display='block';k.innerHTML='<div class="info-box success" style="font-family:var(--font-mono);font-size:10px"><strong>KEY:</strong> Green=in range. Red=out of range. \u25CF=all pass. Burn windows require '+unit.minHours+'+ consecutive all-pass hours.</div>';
+  var k=document.getElementById('analysisKey');k.style.display='block';k.innerHTML='<div class="info-box success" style="font-family:var(--font-mono);font-size:10px"><strong>KEY:</strong> Green=in range. Red=out of range. <span style="color:#C87512;font-weight:700">ND</span>=no NWS data available. \u25CF=all pass. Burn windows require '+unit.minHours+'+ consecutive all-pass hours.</div>';
 }
 
 // Populate settings controls from the current sync configuration.
