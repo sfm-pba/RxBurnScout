@@ -1,13 +1,18 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v0.1.8';
+var RXBURNSCOUT_VERSION='v0.1.9';
+// v0.1.9 revisions in this chat: calculate eligible hours from local sunrise/sunset,
+// add independent pre-sunrise and post-sunset extensions capped to 1 a.m.–11 p.m.,
+// and replace the wind-direction row with a 16-point inward-arrow compass.
+// Follow-up refinements: emphasize primary compass points, mute rejected directions,
+// simplify compass labels, and mark extension hours in the hourly header.
 // v0.1.8 revisions in this chat: display orange ND for unavailable weather values,
 // fill gaps between returned hourly periods with ND columns, and prevent missing data
 // from counting as a passing hour; move both burn-window and no-window notices below the day title.
 // Also use the burn site's NWS time zone for forecast dates/hours, start tomorrow after local noon,
 // and remove the keyboard-navigation hint from daily detail.
 </script>
-<!-- RxBurnScout v0.1.8 — hourly no-data indicators and forecast-detail layout revisions. -->
+<!-- RxBurnScout v0.1.9 — solar-hour filtering and compass wind-direction controls. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -36,7 +41,15 @@ var RXBURNSCOUT_VERSION='v0.1.8';
 .app-version{display:inline-block;margin-left:7px;font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.03em;color:rgba(245,240,232,.62);vertical-align:middle}
 .wind-dir-toggle{border:1px solid var(--border-strong);border-radius:6px;padding:5px 7px;background:var(--surface);font-family:var(--font-mono);font-size:10px;line-height:1.2;cursor:pointer;min-width:42px;transition:background .15s,border-color .15s,color .15s}
 .wind-dir-toggle.accepted{color:var(--pass);background:var(--pass-bg);border-color:rgba(61,107,60,.28)}
-.wind-dir-toggle.rejected{color:var(--fail);background:var(--fail-bg);border-color:rgba(160,65,58,.25)}
+.wind-dir-toggle.rejected{color:#B18A5B;background:rgba(177,138,91,.055);border-color:rgba(177,138,91,.20)}
+.wind-compass{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(5,52px);gap:4px;max-width:390px;margin:0 auto 14px}
+.wind-dir-toggle{min-width:0;width:100%;height:100%;padding:3px 1px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:10px;border-radius:8px}
+.wind-dir-arrow{font-family:Arial,sans-serif;font-size:22px;line-height:1;font-weight:700}
+.wind-dir-label{font-size:9px;line-height:1.1}
+.wind-dir-toggle.primary-direction .wind-dir-arrow{font-size:27px}
+.wind-dir-toggle.primary-direction .wind-dir-label{font-size:11px;font-weight:700}
+.hg-header.extended-hour{color:#fff!important;background:#555!important;border-radius:4px 4px 0 0}
+@media(max-width:420px){.wind-compass{grid-template-rows:repeat(5,45px);gap:2px}.wind-dir-arrow{font-size:19px}.wind-dir-label{font-size:8px}.wind-dir-toggle.primary-direction .wind-dir-arrow{font-size:23px}.wind-dir-toggle.primary-direction .wind-dir-label{font-size:9px}}
 .wind-dir-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .badge-os{padding:3px 8px;background:rgba(245,240,232,.1);border-radius:16px;font-family:var(--font-mono);font-size:8px;color:rgba(245,240,232,.5);border:1px solid rgba(245,240,232,.08);letter-spacing:.05em}
 .nav-tabs{display:flex;gap:3px;margin-top:14px;overflow-x:auto;padding-bottom:2px;position:relative}
@@ -194,7 +207,22 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
     </div>
   </div>
   <!-- Settings view: optional cross-device sync plus import/export and data reset. -->
-  <div class="view" id="view-settings">
+    <div class="view" id="view-settings">
+    <div class="card">
+      <div class="card-title">Daylight Window</div>
+      <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px">Forecast hours are included according to calculated local sunrise and sunset. Extensions are optional; the analysis never includes hours earlier than 1 a.m. or later than 11 p.m.</p>
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label" for="sunriseExtension">EXTEND BEFORE SUNRISE <strong id="sunriseExtensionValue">0 hours</strong></label>
+        <input class="form-input" id="sunriseExtension" type="range" min="0" max="10" step="1" value="0" oninput="saveSolarSettings()" style="padding:0;accent-color:var(--pass)">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted)"><span>Sunrise</span><span>Up to 10 hours earlier*</span></div>
+      </div>
+      <div class="form-group" style="margin-bottom:8px">
+        <label class="form-label" for="sunsetExtension">EXTEND AFTER SUNSET <strong id="sunsetExtensionValue">0 hours</strong></label>
+        <input class="form-input" id="sunsetExtension" type="range" min="0" max="10" step="1" value="0" oninput="saveSolarSettings()" style="padding:0;accent-color:var(--pass)">
+        <div style="display:flex;justify-content:space-between;font-size:10px;color:var(--text-muted)"><span>Sunset</span><span>Up to 10 hours later*</span></div>
+      </div>
+      <p style="font-size:11px;color:var(--text-muted);line-height:1.5;margin-top:12px">*The overall eligible range is capped at 1 a.m.–11 p.m. Hours outside the resulting window do not appear in the analysis.</p>
+    </div>
     <div class="card">
       <div class="card-title">Cloud Sync</div>
       <p style="font-size:13px;color:var(--text-secondary);line-height:1.6;margin-bottom:14px">Connect to an RxBurnScout sync server (a Cloudflare Worker) to sync your burn units across devices. Without this, data is stored locally in your browser only.</p>
@@ -265,7 +293,8 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
     <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">All parameters must be in range simultaneously for an hour to pass.</p>
     <div id="paramFields"></div>
     <div class="card-label" style="margin-top:14px">WIND DIRECTION</div>
-    <div id="windDirChecks" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px"></div>
+    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Select acceptable wind directions.</p>
+    <div id="windDirChecks" class="wind-compass" style="margin-bottom:14px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-secondary" onclick="closeUnitModal()">Cancel</button><button class="btn btn-primary" onclick="saveUnit()">Save &amp; Analyze</button></div>
   </div>
 </div>
@@ -301,7 +330,7 @@ var FORECAST_TIMEOUT_MS=15000, FORECAST_ERROR_MIN_MS=3000;
 // Read previously saved unit/configuration JSON from this browser. The try/catch
 // blocks allow the app to start even if storage is empty or contains invalid JSON.
 // The legacy fuel field and apiUrl setting are migrated away when encountered.
-function loadLocal(){try{units=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];units.forEach(function(u){delete u.fuel;});}catch(e){units=[];}try{config=JSON.parse(localStorage.getItem(CONFIG_KEY))||{syncUrl:'',token:''};}catch(e){config={syncUrl:'',token:''};}if(config.apiUrl&&!config.syncUrl){config.syncUrl=config.apiUrl;delete config.apiUrl;}}
+function loadLocal(){try{units=JSON.parse(localStorage.getItem(STORAGE_KEY))||[];units.forEach(function(u){delete u.fuel;});}catch(e){units=[];}try{config=JSON.parse(localStorage.getItem(CONFIG_KEY))||{syncUrl:'',token:''};}catch(e){config={syncUrl:'',token:''};}if(config.apiUrl&&!config.syncUrl){config.syncUrl=config.apiUrl;delete config.apiUrl;}if(!Number.isInteger(config.sunriseExtension))config.sunriseExtension=0;if(!Number.isInteger(config.sunsetExtension))config.sunsetExtension=0;config.sunriseExtension=Math.max(0,Math.min(10,config.sunriseExtension));config.sunsetExtension=Math.max(0,Math.min(10,config.sunsetExtension));}
 // Persist the current unit list and sync configuration in browser localStorage.
 // This is local persistence; server backup happens separately through autoSync().
 function saveLocal(){localStorage.setItem(STORAGE_KEY,JSON.stringify(units));localStorage.setItem(CONFIG_KEY,JSON.stringify(config));}
@@ -546,10 +575,17 @@ function openUnitAnalysis(idx){if(idx<0||idx>=units.length)return;selectedUnitId
 // Create the min/max controls for the four supported weather parameters.
 // Precipitation probability has a fixed minimum of zero in this interface.
 function buildParamFields(params){var p=params||DEFAULT_PARAMS;document.getElementById('paramFields').innerHTML=p.map(function(param,i){var fixedMin=param.key==='precipProbability';return '<div class="param-config"><div class="param-name">'+esc(param.label)+' ('+esc(param.unit)+')</div><div class="form-group"><label class="form-label">MIN</label><input class="form-input param-min'+(fixedMin?' param-min-fixed':'')+'" data-idx="'+i+'" type="number" step="any" value="'+(fixedMin?0:param.min)+'"'+(fixedMin?' disabled tabindex="-1" aria-label="Minimum precipitation probability fixed at zero"':'')+'></div><div class="form-group"><label class="form-label">MAX</label><input class="form-input param-max" data-idx="'+i+'" type="number" step="any" value="'+param.max+'"></div></div>';}).join('');}
-// Build the 16 optional compass-direction checkboxes and restore selected values.
-function buildWindDirChecks(sel,acceptAllWhenEmpty){var s=sel||[],acceptAll=acceptAllWhenEmpty===true;document.getElementById('windDirChecks').innerHTML=WIND_DIRS.map(function(d){var accepted=acceptAll||s.indexOf(d)>=0;return '<button type="button" class="wind-dir-toggle '+(accepted?'accepted':'rejected')+'" data-direction="'+d+'" aria-pressed="'+accepted+'" title="Wind from '+d+' is '+(accepted?'acceptable':'not acceptable')+'" onclick="toggleWindDir(this)">'+(accepted?'&#10003;':'&#10005;')+' '+d+'</button>';}).join('');}
-// Alternate a compass direction between acceptable (green check) and rejected (red X).
-function toggleWindDir(button){var accepted=button.classList.contains('accepted');accepted=!accepted;button.classList.toggle('accepted',accepted);button.classList.toggle('rejected',!accepted);button.setAttribute('aria-pressed',String(accepted));button.title='Wind from '+button.dataset.direction+' is '+(accepted?'acceptable':'not acceptable');button.innerHTML=(accepted?'&#10003;':'&#10005;')+' '+button.dataset.direction;}
+// Place each compass point around a 5-by-5 grid; arrows point from the wind's
+// reported source direction inward toward the center of the compass.
+var WIND_LAYOUT={
+  N:{row:1,col:3,arrow:'↓'},NNE:{row:1,col:4,arrow:'↙'},NE:{row:2,col:4,arrow:'↙'},ENE:{row:2,col:5,arrow:'↙'},
+  E:{row:3,col:5,arrow:'←'},ESE:{row:4,col:5,arrow:'↖'},SE:{row:4,col:4,arrow:'↖'},SSE:{row:5,col:4,arrow:'↖'},
+  S:{row:5,col:3,arrow:'↑'},SSW:{row:5,col:2,arrow:'↗'},SW:{row:4,col:2,arrow:'↗'},WSW:{row:4,col:1,arrow:'↗'},
+  W:{row:3,col:1,arrow:'→'},WNW:{row:2,col:1,arrow:'↘'},NW:{row:2,col:2,arrow:'↘'},NNW:{row:1,col:2,arrow:'↘'}
+};
+function buildWindDirChecks(sel,acceptAllWhenEmpty){var s=sel||[],acceptAll=acceptAllWhenEmpty===true,html='';WIND_DIRS.forEach(function(d){var accepted=acceptAll||s.indexOf(d)>=0,l=WIND_LAYOUT[d],primary=['N','E','S','W'].indexOf(d)>=0;html+='<button type="button" class="wind-dir-toggle '+(accepted?'accepted':'rejected')+(primary?' primary-direction':'')+'" style="grid-row:'+l.row+';grid-column:'+l.col+'" data-direction="'+d+'" aria-pressed="'+accepted+'" title="Wind from '+d+' is '+(accepted?'acceptable':'not acceptable')+'" onclick="toggleWindDir(this)"><span class="wind-dir-arrow" aria-hidden="true">'+l.arrow+'</span><span class="wind-dir-label">'+d+'</span></button>';});document.getElementById('windDirChecks').className='wind-compass';document.getElementById('windDirChecks').innerHTML=html;}
+// Toggle a direction's accepted/rejected state; green means accepted, orange rejected.
+function toggleWindDir(button){var accepted=button.classList.contains('accepted');accepted=!accepted;button.classList.toggle('accepted',accepted);button.classList.toggle('rejected',!accepted);button.setAttribute('aria-pressed',String(accepted));button.title='Wind from '+button.dataset.direction+' is '+(accepted?'acceptable':'not acceptable');}
 
 // Reset the editor to its defaults for a brand-new burn unit.
 function openUnitModal(){document.getElementById('editUnitId').value='';document.getElementById('modalTitle').textContent='New Burn Unit';document.getElementById('unitName').value='';document.getElementById('unitLat').value='';document.getElementById('unitLon').value='';document.getElementById('unitLat').dataset.preciseValue='';document.getElementById('unitLon').dataset.preciseValue='';document.getElementById('mapCoordinates').textContent='Selected coordinates: none';document.getElementById('unitMinHours').value='4';document.getElementById('locSearch').value='';if(locationMarker){locationMap.removeLayer(locationMarker);locationMarker=null;}buildParamFields();buildWindDirChecks([],true);document.getElementById('unitModal').classList.add('open');initializeLocationMap();}
@@ -592,22 +628,62 @@ async function fetchNWSForecast(lat,lon,signal){
 // Extract date/time parts in the burn site's NWS time zone, never the browser's zone.
 function zonedDateParts(date,timeZone){var parts=new Intl.DateTimeFormat('en-US',{timeZone:timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date),out={};parts.forEach(function(p){if(p.type!=='literal')out[p.type]=p.value;});return {year:out.year,month:out.month,day:out.day,hour:parseInt(out.hour,10),minute:parseInt(out.minute,10),dateKey:out.year+'-'+out.month+'-'+out.day};}
 function localDateKey(timeZone,date){if(timeZone)return zonedDateParts(date||new Date(),timeZone).dateKey;var d=date||new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');}
-// Convert raw NWS periods into daily data using the burn site's time zone. Only
-// 5 a.m.–9 p.m. local hours are eligible. After local noon, omit the partial
-// current day so the available forecast is used for the next seven calendar days.
-function parseNWSPeriods(periods,timeZone,now){
-  var current=zonedDateParts(now||new Date(),timeZone),skipToday=current.hour>12||(current.hour===12&&current.minute>0),days={};
-  for(var i=0;i<periods.length;i++){var p=periods[i],dt=new Date(p.startTime),parts=zonedDateParts(dt,timeZone),h=parts.hour;
-  if(h<5||h>21||(skipToday&&parts.dateKey===current.dateKey))continue;
-  var dk=new Intl.DateTimeFormat('en-US',{timeZone:timeZone,weekday:'short',month:'short',day:'numeric'}).format(dt);
-  if(!days[dk])days[dk]={date:dk,sortKey:parts.dateKey,weekday:new Intl.DateTimeFormat('en-US',{timeZone:timeZone,weekday:'long'}).format(dt),hours:[]};
-  var ws=0,wsStr=p.windSpeed||'',m=wsStr.match(/(\d+)\s*to\s*(\d+)/);if(m){ws=(parseInt(m[1])+parseInt(m[2]))/2;}else{var s=wsStr.match(/(\d+)/);if(s)ws=parseInt(s[1]);}
-  var temp=p.temperature;if(temp&&typeof temp==='object')temp=temp.value; if(temp===undefined)temp=null;
-  days[dk].hours.push({hour:h,hourLabel:formatHour(h),windSpeed:wsStr?ws:null,windDirection:p.windDirection||'',relativeHumidity:p.relativeHumidity&&p.relativeHumidity.value!==null?p.relativeHumidity.value:null,precipProbability:p.probabilityOfPrecipitation&&p.probabilityOfPrecipitation.value!==null?p.probabilityOfPrecipitation.value:null,temperature:temp});}
-  // Every displayed day uses the same 5 a.m.–9 p.m. grid. Where the NWS has not
-  // supplied a period for an hour, show an ND placeholder rather than hiding the hour.
-  Object.keys(days).forEach(function(key){var day=days[key],byHour={};day.hours.forEach(function(hour){byHour[hour.hour]=hour;});var filled=[];for(var hourNum=5;hourNum<=21;hourNum++){filled.push(byHour[hourNum]||{hour:hourNum,hourLabel:formatHour(hourNum),windSpeed:null,windDirection:'',relativeHumidity:null,precipProbability:null,temperature:null,noData:true});}day.hours=filled;});
-  return Object.values(days).sort(function(a,b){return a.sortKey.localeCompare(b.sortKey);}).slice(0,7);
+// Calculate sunrise/sunset approximately using the NOAA solar-position algorithm.
+// Returns a UTC Date for the event on the requested local calendar date, or null
+// when the sun does not cross the horizon on that date at this latitude.
+function solarEventForLocalDate(dateKey,lat,lon,timeZone,isSunrise){
+  var bits=dateKey.split('-').map(Number),year=bits[0],month=bits[1],day=bits[2],dateUTC=new Date(Date.UTC(year,month-1,day));
+  var startYear=Date.UTC(year,0,1),n=Math.floor((dateUTC.getTime()-startYear)/86400000)+1,lngHour=lon/15;
+  var t=n+((isSunrise?6:18)-lngHour)/24,m=0.9856*t-3.289;
+  var L=(m+1.916*Math.sin(m*Math.PI/180)+0.020*Math.sin(2*m*Math.PI/180)+282.634)%360;if(L<0)L+=360;
+  var RA=Math.atan(0.91764*Math.tan(L*Math.PI/180))*180/Math.PI;RA=(RA+360)%360;
+  RA+=(Math.floor(L/90)*90-Math.floor(RA/90)*90);RA/=15;
+  var sinDec=0.39782*Math.sin(L*Math.PI/180),cosDec=Math.cos(Math.asin(sinDec));
+  var cosH=(Math.cos(90.833*Math.PI/180)-sinDec*Math.sin(lat*Math.PI/180))/(cosDec*Math.cos(lat*Math.PI/180));
+  if(!isFinite(cosH)||cosH>1||cosH< -1)return null;
+  var H=(isSunrise?360-Math.acos(cosH)*180/Math.PI:Math.acos(cosH)*180/Math.PI)/15;
+  var localMeanTime=H+RA-0.06571*t-6.622,utcHour=(localMeanTime-lngHour+24)%24;
+  var candidate=new Date(Date.UTC(year,month-1,day)+utcHour*3600000);
+  // UTC date may differ from the burn site's local calendar date; choose the
+  // adjacent UTC day whose zoned date matches the requested local date.
+  for(var shift=-1;shift<=1;shift++){var test=new Date(candidate.getTime()+shift*86400000);if(zonedDateParts(test,timeZone).dateKey===dateKey)return test;}
+  return candidate;
+}
+function eligibleHoursForDate(dateKey,lat,lon,timeZone){
+  var rise=solarEventForLocalDate(dateKey,lat,lon,timeZone,true),set=solarEventForLocalDate(dateKey,lat,lon,timeZone,false);
+  if(!rise||!set)return {hours:[],daylightFirst:null,daylightLast:null};
+  var rp=zonedDateParts(rise,timeZone),sp=zonedDateParts(set,timeZone);
+  // Sunrise in minutes 00–29 admits that hour; minutes 30–59 start next hour.
+  // Sunset in minutes 30–59 admits that hour; minutes 00–29 end at prior hour.
+  var daylightFirst=rp.hour+(rp.minute>=30?1:0);
+  var daylightLast=sp.hour-(sp.minute<30?1:0);
+  var first=Math.max(1,daylightFirst-(config.sunriseExtension||0));
+  var last=Math.min(23,daylightLast+(config.sunsetExtension||0));
+  var hours=[];for(var h=first;h<=last;h++)hours.push(h);
+  return {hours:hours,daylightFirst:daylightFirst,daylightLast:daylightLast};
+}
+// Convert raw NWS periods into daily data using the burn site's time zone.
+// Only hours in the calculated sunrise/sunset window (plus configured extensions)
+// appear. The outer limits are 1 a.m. through 11 p.m. After local noon, omit the
+// partial current day so the available forecast is used for the next seven dates.
+function parseNWSPeriods(periods,timeZone,now,lat,lon){
+  var current=zonedDateParts(now||new Date(),timeZone),skipToday=current.hour>12||(current.hour===12&&current.minute>0),days={},eligibleByDate={};
+  for(var i=0;i<periods.length;i++){
+    var p=periods[i],dt=new Date(p.startTime),parts=zonedDateParts(dt,timeZone),h=parts.hour,dk=parts.dateKey;
+    if(h<1||h>23||(skipToday&&dk===current.dateKey))continue;
+    if(!eligibleByDate[dk])eligibleByDate[dk]=eligibleHoursForDate(dk,lat,lon,timeZone);
+    if(eligibleByDate[dk].hours.indexOf(h)<0)continue;
+    var dayLabel=new Intl.DateTimeFormat('en-US',{timeZone:timeZone,weekday:'short',month:'short',day:'numeric'}).format(dt);
+    if(!days[dayLabel])days[dayLabel]={date:dayLabel,sortKey:dk,weekday:new Intl.DateTimeFormat('en-US',{timeZone:timeZone,weekday:'long'}).format(dt),hours:[]};
+    var wsStr=p.windSpeed||'',m=wsStr.match(/(\d+)\s*to\s*(\d+)/),ws=null;if(m)ws=(parseInt(m[1])+parseInt(m[2]))/2;else{var sm=wsStr.match(/(\d+)/);if(sm)ws=parseInt(sm[1]);}
+    var temp=p.temperature;if(temp&&typeof temp==='object')temp=temp.value;if(temp===undefined)temp=null;
+    days[dayLabel].hours.push({hour:h,hourLabel:formatHour(h),daylightExtension:h<eligibleByDate[dk].daylightFirst||h>eligibleByDate[dk].daylightLast,windSpeed:wsStr?ws:null,windDirection:p.windDirection||'',relativeHumidity:p.relativeHumidity&&p.relativeHumidity.value!==null?p.relativeHumidity.value:null,precipProbability:p.probabilityOfPrecipitation&&p.probabilityOfPrecipitation.value!==null?p.probabilityOfPrecipitation.value:null,temperature:temp});
+  }
+  Object.keys(days).forEach(function(key){
+    var day=days[key],eligible=eligibleByDate[day.sortKey]||{hours:[],daylightFirst:null,daylightLast:null},allowed=eligible.hours,byHour={};day.hours.forEach(function(hour){byHour[hour.hour]=hour;});
+    day.hours=allowed.filter(function(h){return h>=1&&h<=23;}).map(function(hourNum){return byHour[hourNum]||{hour:hourNum,hourLabel:formatHour(hourNum),daylightExtension:hourNum<eligible.daylightFirst||hourNum>eligible.daylightLast,windSpeed:null,windDirection:'',relativeHumidity:null,precipProbability:null,temperature:null,noData:true};});
+  });
+  return Object.values(days).filter(function(day){return day.hours.length>0;}).sort(function(a,b){return a.sortKey.localeCompare(b.sortKey);}).slice(0,7);
 }
 // Convert a 24-hour clock hour to compact labels such as 9a, 12p, or 4p.
 function formatHour(h){if(h===0)return '12a';if(h===12)return '12p';return h<12?h+'a':(h-12)+'p';}
@@ -704,7 +780,7 @@ async function fetchForecast(force){
   try{
     // Await the network request; execution resumes here when the promise resolves.
     var result=await fetchNWSForecast(unit.lat,unit.lon,request.controller.signal);
-    var days=parseNWSPeriods(result.periods,result.timeZone);if(!days.length)throw new Error('The NWS returned no usable hourly forecast data for the selected outlook period.');
+    var days=parseNWSPeriods(result.periods,result.timeZone,new Date(),unit.lat,unit.lon);if(!days.length)throw new Error('No eligible forecast hours were found. Check the location, or try again later if sunrise/sunset could not be calculated for this location.');
     // If another request replaced this one, ignore its late result rather than letting
     // an older response overwrite newer state.
     if(forecastRequests[unit.id]!==request)return;
@@ -784,7 +860,7 @@ function renderHourlyGrid(){
   var ws=new Set();windows.forEach(function(w){for(var i=w.start;i<=w.end;i++)ws.add(i);});
   var cols=hours.length,g='<div class="hourly-grid" style="grid-template-columns:110px repeat('+cols+',1fr)">';
   g+='<div class="hg-header" style="font-weight:700">PARAMETER</div>';
-  hours.forEach(function(h,i){g+='<div class="hg-header" style="'+(ws.has(i)?'color:var(--pass);background:var(--pass-bg);border-radius:4px 4px 0 0':'')+'">'+h.hourLabel+'</div>';});
+  hours.forEach(function(h,i){var headerClass='hg-header'+(h.daylightExtension?' extended-hour':'');var headerStyle=ws.has(i)&&!h.daylightExtension?'color:var(--pass);background:var(--pass-bg);border-radius:4px 4px 0 0':'';g+='<div class="'+headerClass+'" style="'+headerStyle+'">'+h.hourLabel+'</div>';});
   unit.params.forEach(function(param){g+='<div class="hg-label">'+esc(param.label)+'</div>';
     hours.forEach(function(h,i){var v=h[param.key],hasData=v!==null&&v!==undefined,d=hasData?''+v:'ND',p=hasData&&(v>=param.min&&v<=param.max);
     g+='<div class="hg-cell '+(hasData?(p?'pass':'fail'):'no-data')+(ws.has(i)?' in-window':'')+'">'+d+'</div>';});});
@@ -803,7 +879,9 @@ function renderHourlyGrid(){
 }
 
 // Populate settings controls from the current sync configuration.
-function renderSettings(){document.getElementById('settingsSyncUrl').value=config.syncUrl||'';if(isConnected()){document.getElementById('syncSection').style.display='block';document.getElementById('settingsToken').value=config.token;}}
+function saveSolarSettings(){var oldRise=config.sunriseExtension||0,oldSet=config.sunsetExtension||0,rise=parseInt(document.getElementById('sunriseExtension').value,10)||0,set=parseInt(document.getElementById('sunsetExtension').value,10)||0;config.sunriseExtension=Math.max(0,Math.min(10,rise));config.sunsetExtension=Math.max(0,Math.min(10,set));document.getElementById('sunriseExtensionValue').textContent=config.sunriseExtension+' hour'+(config.sunriseExtension===1?'':'s');document.getElementById('sunsetExtensionValue').textContent=config.sunsetExtension+' hour'+(config.sunsetExtension===1?'':'s');if(oldRise!==config.sunriseExtension||oldSet!==config.sunsetExtension){units.forEach(function(u){delete forecastData[u.id];delete forecastFetchedOn[u.id];});}saveLocal();}
+// Restore persisted daylight settings whenever the Settings view is opened.
+function renderSettings(){document.getElementById('settingsSyncUrl').value=config.syncUrl||'';document.getElementById('sunriseExtension').value=config.sunriseExtension||0;document.getElementById('sunsetExtension').value=config.sunsetExtension||0;saveSolarSettings();if(isConnected()){document.getElementById('syncSection').style.display='block';document.getElementById('settingsToken').value=config.token;}}
 // Escape text before inserting it into HTML strings, preventing names/messages from
 // being interpreted as markup. This helper is used for displayed dynamic text.
 function esc(str){if(!str)return '';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
