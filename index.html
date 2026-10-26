@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v0.2.1';
-// v0.2.1 revisions: added compact header scrolling for mobile version
+var RXBURNSCOUT_VERSION='v0.2.2';
+// v0.2.2 revisions: added an app-feedback Contact tab with a Netlify Forms submission,
+// spam honeypot, and an email alternative for users who prefer their own mail app.
 </script>
 <!-- RxBurnScout v0.2.0 — responsive readability and bottom-clearance refinements. -->
 <html lang="en">
@@ -203,6 +204,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
     <button class="nav-tab" data-view="analysis">Analysis</button>
     <button class="nav-tab" data-view="settings">Settings</button>
     <button class="nav-tab" data-view="about">About</button>
+    <button class="nav-tab" data-view="contact">Contact</button>
   </nav>
 </header>
 <!-- Main content area. Only the currently active .view is displayed. -->
@@ -291,6 +293,37 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary)"><strong>Future versions:</strong> Mixing height, Haines Index, transport winds (require fire weather data sources). Post-burn condition monitoring. Automated email/SMS alerts.</p>
     </div>
     <div class="card" style="text-align:center;padding:14px"><p style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:.05em">RXBURNSCOUT IS AN OPEN SOURCE PROJECT<br>A True North Seed Project Initiative<br>Hosted by Saint Francois Mountains Prescribed Burn Association</p></div>
+  </div>
+  <!-- Contact view: feedback about the RxBurnScout application only. -->
+  <div class="view" id="view-contact">
+    <div class="card">
+      <div class="card-title">Contact RxBurnScout</div>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:14px">Use this form to report a bug, suggest an improvement, or share feedback about the RxBurnScout application. Please include enough detail to help us understand your comment.</p>
+      <form name="rxburnscout-feedback" method="POST" data-netlify="true" netlify-honeypot="bot-field" id="contactForm">
+        <input type="hidden" name="form-name" value="rxburnscout-feedback">
+        <div style="position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0" aria-hidden="true">
+          <label>Leave this field empty: <input name="bot-field" tabindex="-1" autocomplete="off"></label>
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label" for="contactName">NAME (OPTIONAL)</label>
+          <input class="form-input" id="contactName" name="name" type="text" autocomplete="name" maxlength="100" placeholder="Your name">
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label" for="contactEmail">EMAIL ADDRESS (REQUIRED)</label>
+          <input class="form-input" id="contactEmail" name="email" type="email" autocomplete="email" maxlength="254" required placeholder="you@example.com">
+        </div>
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label" for="contactMessage">MESSAGE (REQUIRED)</label>
+          <textarea class="form-input" id="contactMessage" name="message" required maxlength="5000" rows="6" placeholder="Describe your comment, bug report, or suggestion…" style="font-family:var(--font-body);resize:vertical;line-height:1.5"></textarea>
+        </div>
+        <div id="contactStatus" class="info-box" role="status" aria-live="polite" style="display:none;margin-bottom:12px"></div>
+        <button class="btn btn-primary" id="contactSubmit" type="submit">Send message</button>
+      </form>
+      <div style="border-top:1px solid var(--border);margin-top:18px;padding-top:14px">
+        <p style="font-size:12px;line-height:1.6;color:var(--text-secondary)">Prefer email? You can send app feedback to <a href="mailto:info@sfm-pba.org?subject=RxBurnScout%20app%20feedback" style="color:var(--pass);font-weight:600">info@sfm-pba.org</a>.</p>
+      </div>
+      <p style="font-size:11px;line-height:1.5;color:var(--text-muted);margin-top:12px">This contact form is for comments about the RxBurnScout application only, not for prescribed-burning advice or general collaboration inquiries.</p>
+    </div>
   </div>
 </main>
 <!-- Modal form used for both creating a new unit and editing an existing one. -->
@@ -904,6 +937,24 @@ function renderSettings(){document.getElementById('settingsSyncUrl').value=confi
 // Escape text before inserting it into HTML strings, preventing names/messages from
 // being interpreted as markup. This helper is used for displayed dynamic text.
 function esc(str){if(!str)return '';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+
+// Submit app feedback through Netlify Forms without leaving the current app view.
+// The form remains statically detectable by Netlify; this handler provides inline feedback.
+document.getElementById('contactForm').addEventListener('submit',async function(e){
+  e.preventDefault();
+  var form=e.currentTarget,status=document.getElementById('contactStatus'),button=document.getElementById('contactSubmit');
+  status.style.display='none';status.className='info-box';button.disabled=true;button.textContent='Sending…';
+  try{
+    var response=await fetch('/',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},body:new URLSearchParams(new FormData(form)).toString()});
+    if(!response.ok)throw new Error('Submission failed ('+response.status+').');
+    form.reset();
+    status.className='info-box success';status.textContent='Thank you for your feedback. Your message has been submitted.';status.style.display='block';
+  }catch(error){
+    status.className='info-box error';status.textContent='Sorry, your message could not be submitted. Please try again or email info@sfm-pba.org.';status.style.display='block';
+  }finally{
+    button.disabled=false;button.textContent='Send message';
+  }
+});
 
 document.getElementById('appVersion').textContent=RXBURNSCOUT_VERSION;
 // Keep the navigation pinned on desktop and mobile. Once the user scrolls past
