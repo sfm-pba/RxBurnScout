@@ -1,10 +1,7 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v0.2.0';
-// v0.2.0 revisions: add extra scrollable bottom space so fixed hosting (Netlify)
-// badges do not cover final content or controls; enlarge desktop fonts; scrolling now compacts the header to leave only tabs.
-// Mobile typography and all forecast logic remain unchanged.
-
+var RXBURNSCOUT_VERSION='v0.2.1';
+// v0.2.1 revisions: added compact header scrolling for mobile version
 </script>
 <!-- RxBurnScout v0.2.0 — responsive readability and bottom-clearance refinements. -->
 <html lang="en">
@@ -27,8 +24,8 @@ var RXBURNSCOUT_VERSION='v0.2.0';
 *{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);font-family:var(--font-body);color:var(--text);min-height:100vh}
 /* Header, app title, navigation, and the main content column. */
 .app-header{background:linear-gradient(135deg,#3A3226 0%,#5C4E3C 40%,#4A6B49 100%);padding:24px 20px 16px;position:relative}
-/* Desktop scrolling behavior is enabled below: keep navigation in view and
-   collapse the identity row after the user has moved down the page. */
+/* Keep navigation in view while scrolling; collapse the identity row after the
+   user has moved down the page. Compact sizing is tuned separately for desktop/mobile. */
 .app-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");opacity:.5}
 .header-inner{position:relative;display:flex;justify-content:space-between;align-items:flex-start}
 .app-title{font-family:var(--font-display);font-size:30px;font-weight:700;color:#F5F0E8;line-height:1.1;letter-spacing:-.02em}.app-title span{color:var(--accent)}
@@ -156,7 +153,14 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
 .day-nav-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .day-nav-btn:disabled{opacity:.3;cursor:default}
 .day-nav-btn:not(:disabled):hover{background:var(--pass-bg)}
-/* Desktop-only readability and navigation refinements; mobile sizing stays intact. */
+/* Keep the app navigation available while scrolling on all screen sizes. */
+.app-header{position:sticky;top:0;z-index:80;transition:padding .2s ease,box-shadow .2s ease}
+.header-inner{max-height:120px;opacity:1;overflow:visible;transition:max-height .2s ease,opacity .15s ease}
+.nav-tabs{transition:margin-top .2s ease}
+.app-header.is-compact{padding:8px 20px 7px;box-shadow:0 4px 12px rgba(0,0,0,.16)}
+.app-header.is-compact .header-inner{max-height:0;opacity:0;overflow:hidden;pointer-events:none}
+.app-header.is-compact .nav-tabs{margin-top:0;padding-bottom:0}
+/* Desktop-only readability refinements; mobile typography stays intact. */
 @media(min-width:601px){
   .nav-tab{font-size:14px}
   .card-title,.modal-title{font-size:20px}
@@ -169,15 +173,14 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
   .hg-header,.hg-label{font-size:11px}
   .hg-cell{font-size:12px}
   .info-box,.loc-result{font-size:14px}
-  .app-header{position:sticky;top:0;z-index:80;transition:padding .2s ease,box-shadow .2s ease}
-  .header-inner{max-height:100px;opacity:1;overflow:visible;transition:max-height .2s ease,opacity .15s ease}
-  .nav-tabs{transition:margin-top .2s ease}
-  .app-header.is-compact{padding:8px 20px 7px;box-shadow:0 4px 12px rgba(0,0,0,.16)}
-  .app-header.is-compact .header-inner{max-height:0;opacity:0;overflow:hidden;pointer-events:none}
-  .app-header.is-compact .nav-tabs{margin-top:0;padding-bottom:0}
 }
-/* On narrow screens, stack form fields and tighten the day selector. */
-@media(max-width:600px){.form-row{grid-template-columns:1fr}.form-row.three{grid-template-columns:1fr 1fr}.param-config{grid-template-columns:90px 1fr 1fr}.day-tabs{gap:4px}.day-tab{min-width:60px;padding:6px 4px}.day-tab-label{font-size:10px}}
+/* On narrow screens, keep the compact navigation short and easy to tap. */
+@media(max-width:600px){
+  .app-header.is-compact{padding:6px 10px 5px}
+  .app-header.is-compact .nav-tab{padding:4px 9px}
+  .app-header.is-compact .nav-tabs{gap:2px}
+  .form-row{grid-template-columns:1fr}.form-row.three{grid-template-columns:1fr 1fr}.param-config{grid-template-columns:90px 1fr 1fr}.day-tabs{gap:4px}.day-tab{min-width:60px;padding:6px 4px}.day-tab-label{font-size:10px}
+}
 </style>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 </head>
@@ -903,16 +906,15 @@ function renderSettings(){document.getElementById('settingsSyncUrl').value=confi
 function esc(str){if(!str)return '';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 document.getElementById('appVersion').textContent=RXBURNSCOUT_VERSION;
-// On desktop, keep the navigation pinned while scrolling. Once the user moves
-// past the title area, collapse the header identity row so only the menu remains.
-function updateDesktopHeader(){
+// Keep the navigation pinned on desktop and mobile. Once the user scrolls past
+// the title area, collapse the identity row so only the menu remains visible.
+function updateCompactHeader(){
   var header=document.querySelector('.app-header');
-  var desktop=window.matchMedia('(min-width: 601px)').matches;
-  header.classList.toggle('is-compact',desktop&&window.scrollY>70);
+  header.classList.toggle('is-compact',window.scrollY>70);
 }
-window.addEventListener('scroll',updateDesktopHeader,{passive:true});
-window.addEventListener('resize',updateDesktopHeader);
-updateDesktopHeader();
+window.addEventListener('scroll',updateCompactHeader,{passive:true});
+window.addEventListener('resize',updateCompactHeader);
+updateCompactHeader();
 loadLocal();renderUnits();updateSyncBadge();
 </script>
 </body>
