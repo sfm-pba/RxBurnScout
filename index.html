@@ -1,18 +1,12 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v0.1.9';
-// v0.1.9 revisions in this chat: calculate eligible hours from local sunrise/sunset,
-// add independent pre-sunrise and post-sunset extensions capped to 1 a.m.–11 p.m.,
-// and replace the wind-direction row with a 16-point inward-arrow compass.
-// Follow-up refinements: emphasize primary compass points, mute rejected directions,
-// simplify compass labels, and mark extension hours in the hourly header.
-// v0.1.8 revisions in this chat: display orange ND for unavailable weather values,
-// fill gaps between returned hourly periods with ND columns, and prevent missing data
-// from counting as a passing hour; move both burn-window and no-window notices below the day title.
-// Also use the burn site's NWS time zone for forecast dates/hours, start tomorrow after local noon,
-// and remove the keyboard-navigation hint from daily detail.
+var RXBURNSCOUT_VERSION='v0.2.0';
+// v0.2.0 revisions: add extra scrollable bottom space so fixed hosting (Netlify)
+// badges do not cover final content or controls; enlarge desktop fonts; scrolling now compacts the header to leave only tabs.
+// Mobile typography and all forecast logic remain unchanged.
+
 </script>
-<!-- RxBurnScout v0.1.9 — solar-hour filtering and compass wind-direction controls. -->
+<!-- RxBurnScout v0.2.0 — responsive readability and bottom-clearance refinements. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -33,6 +27,8 @@ var RXBURNSCOUT_VERSION='v0.1.9';
 *{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);font-family:var(--font-body);color:var(--text);min-height:100vh}
 /* Header, app title, navigation, and the main content column. */
 .app-header{background:linear-gradient(135deg,#3A3226 0%,#5C4E3C 40%,#4A6B49 100%);padding:24px 20px 16px;position:relative}
+/* Desktop scrolling behavior is enabled below: keep navigation in view and
+   collapse the identity row after the user has moved down the page. */
 .app-header::before{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");opacity:.5}
 .header-inner{position:relative;display:flex;justify-content:space-between;align-items:flex-start}
 .app-title{font-family:var(--font-display);font-size:30px;font-weight:700;color:#F5F0E8;line-height:1.1;letter-spacing:-.02em}.app-title span{color:var(--accent)}
@@ -55,7 +51,7 @@ var RXBURNSCOUT_VERSION='v0.1.9';
 .nav-tabs{display:flex;gap:3px;margin-top:14px;overflow-x:auto;padding-bottom:2px;position:relative}
 .nav-tab{padding:5px 12px;border-radius:16px;border:none;background:transparent;color:rgba(245,240,232,.45);font-family:var(--font-body);font-size:12px;font-weight:400;cursor:pointer;white-space:nowrap;transition:all .2s}
 .nav-tab.active{background:rgba(245,240,232,.18);color:#F5F0E8;font-weight:600}
-.main{padding:16px 14px;max-width:860px;margin:0 auto}.view{display:none}.view.active{display:flex;flex-direction:column;gap:14px}
+.main{padding:16px 14px 80px;max-width:860px;margin:0 auto}.view{display:none}.view.active{display:flex;flex-direction:column;gap:14px}
 /* Reusable cards and form layout. */
 .card{padding:18px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 2px 10px rgba(75,63,47,.05)}
 .card-title{font-family:var(--font-display);font-size:18px;font-weight:600;margin-bottom:10px;line-height:1.2}
@@ -123,7 +119,7 @@ var RXBURNSCOUT_VERSION='v0.1.9';
 .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}.status-dot.pass{background:var(--pass)}.status-dot.fail{background:var(--fail)}
 .empty-state{text-align:center;padding:36px 20px;color:var(--text-muted)}.empty-state h3{font-family:var(--font-display);font-size:18px;color:var(--text-secondary);margin-bottom:6px}
 /* The unit editor is displayed above the current view as a modal. */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:20px;overflow-y:auto}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:20px 20px 80px;overflow-y:auto}
 .modal-overlay.open{display:flex}.modal{background:var(--surface);border-radius:var(--radius);padding:22px;max-width:520px;width:100%;margin-top:40px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
 .modal-title{font-family:var(--font-display);font-size:18px;font-weight:600;margin-bottom:14px}
 .param-config{display:grid;grid-template-columns:110px 1fr 1fr;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}.param-config:last-child{border-bottom:none}
@@ -160,6 +156,26 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
 .day-nav-btn{width:32px;height:32px;border-radius:50%;border:1px solid var(--border-strong);background:var(--surface);color:var(--text);font-size:16px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
 .day-nav-btn:disabled{opacity:.3;cursor:default}
 .day-nav-btn:not(:disabled):hover{background:var(--pass-bg)}
+/* Desktop-only readability and navigation refinements; mobile sizing stays intact. */
+@media(min-width:601px){
+  .nav-tab{font-size:14px}
+  .card-title,.modal-title{font-size:20px}
+  .card-label,.form-label,.param-name{font-size:12px}
+  .form-input,.form-select,.btn{font-size:14px}
+  .btn-sm{font-size:12px}
+  .unit-name{font-size:19px}
+  .unit-meta{font-size:13px}
+  .hourly-grid{font-size:13px}
+  .hg-header,.hg-label{font-size:11px}
+  .hg-cell{font-size:12px}
+  .info-box,.loc-result{font-size:14px}
+  .app-header{position:sticky;top:0;z-index:80;transition:padding .2s ease,box-shadow .2s ease}
+  .header-inner{max-height:100px;opacity:1;overflow:visible;transition:max-height .2s ease,opacity .15s ease}
+  .nav-tabs{transition:margin-top .2s ease}
+  .app-header.is-compact{padding:8px 20px 7px;box-shadow:0 4px 12px rgba(0,0,0,.16)}
+  .app-header.is-compact .header-inner{max-height:0;opacity:0;overflow:hidden;pointer-events:none}
+  .app-header.is-compact .nav-tabs{margin-top:0;padding-bottom:0}
+}
 /* On narrow screens, stack form fields and tighten the day selector. */
 @media(max-width:600px){.form-row{grid-template-columns:1fr}.form-row.three{grid-template-columns:1fr 1fr}.param-config{grid-template-columns:90px 1fr 1fr}.day-tabs{gap:4px}.day-tab{min-width:60px;padding:6px 4px}.day-tab-label{font-size:10px}}
 </style>
@@ -264,7 +280,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>3. Hourly co-existence check</strong> — Each hour: do ALL parameters fall within your ranges simultaneously? No daily averaging, no percentage scoring. All or nothing.</p>
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary)"><strong>4. Window detection</strong> — Consecutive all-pass hours meeting your minimum duration are flagged as potential burn windows.</p>
     </div>
-    <div class="info-box warn"><strong>This tool identifies potential burn windows — it does not tell you when to burn.</strong> The decision always belongs to the land manager. Designed for individual use, not organizational use.</div>
+    <div class="info-box warn"><strong>This tool identifies potential burn windows — it does not tell you when to burn.</strong> The decision always belongs to the land manager.</div>
     <div class="card">
       <div class="card-label">DATA SOURCE &amp; LIMITATIONS</div>
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:8px">Forecast data from the <strong>National Weather Service API</strong> (api.weather.gov). Free, public, no key required. Location search and the interactive map use OpenStreetMap data. The selected point helps choose a forecast grid; it does not guarantee site-specific weather accuracy.</p>
@@ -887,6 +903,16 @@ function renderSettings(){document.getElementById('settingsSyncUrl').value=confi
 function esc(str){if(!str)return '';return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
 
 document.getElementById('appVersion').textContent=RXBURNSCOUT_VERSION;
+// On desktop, keep the navigation pinned while scrolling. Once the user moves
+// past the title area, collapse the header identity row so only the menu remains.
+function updateDesktopHeader(){
+  var header=document.querySelector('.app-header');
+  var desktop=window.matchMedia('(min-width: 601px)').matches;
+  header.classList.toggle('is-compact',desktop&&window.scrollY>70);
+}
+window.addEventListener('scroll',updateDesktopHeader,{passive:true});
+window.addEventListener('resize',updateDesktopHeader);
+updateDesktopHeader();
 loadLocal();renderUnits();updateSyncBadge();
 </script>
 </body>
