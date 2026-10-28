@@ -1,8 +1,13 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v0.2.2';
-// v0.2.2 revisions: added an app-feedback Contact tab with a Netlify Forms submission,
-// spam honeypot, and an email alternative for users who prefer their own mail app.
+var RXBURNSCOUT_VERSION='v0.2.3';
+// v0.2.3 revisions: widened the burn-unit editor and added touch-scroll buffer
+// around the location map; clarified wind-direction selection with a stronger
+// visual contrast between accepted and rejected directions.
+// Replaced the grid buttons with 16 clickable SVG wedges and 8 named labels.
+// Refined diagonal label positions and moved the wind-direction key into help.
+// Added a visible native scrollbar inside the burn-unit editor while retaining
+// the map-side scrolling buffer.
 </script>
 <!-- RxBurnScout v0.2.0 — responsive readability and bottom-clearance refinements. -->
 <html lang="en">
@@ -33,18 +38,16 @@ var RXBURNSCOUT_VERSION='v0.2.2';
 .app-title-link{display:inline-block;border:0;background:transparent;text-align:left;cursor:pointer;padding:0;font-family:var(--font-display);font-size:30px;font-weight:700;line-height:1.1;letter-spacing:-.02em;color:#F5F0E8}.app-title-link:focus-visible{outline:2px solid var(--accent);outline-offset:4px;border-radius:3px}
 .app-subtitle{font-family:var(--font-mono);font-size:9px;color:rgba(245,240,232,.5);margin-top:3px;letter-spacing:.1em}
 .app-version{display:inline-block;margin-left:7px;font-family:var(--font-mono);font-size:9px;font-weight:500;letter-spacing:.03em;color:rgba(245,240,232,.62);vertical-align:middle}
-.wind-dir-toggle{border:1px solid var(--border-strong);border-radius:6px;padding:5px 7px;background:var(--surface);font-family:var(--font-mono);font-size:10px;line-height:1.2;cursor:pointer;min-width:42px;transition:background .15s,border-color .15s,color .15s}
-.wind-dir-toggle.accepted{color:var(--pass);background:var(--pass-bg);border-color:rgba(61,107,60,.28)}
-.wind-dir-toggle.rejected{color:#B18A5B;background:rgba(177,138,91,.055);border-color:rgba(177,138,91,.20)}
-.wind-compass{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));grid-template-rows:repeat(5,52px);gap:4px;max-width:390px;margin:0 auto 14px}
-.wind-dir-toggle{min-width:0;width:100%;height:100%;padding:3px 1px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;font-size:10px;border-radius:8px}
-.wind-dir-arrow{font-family:Arial,sans-serif;font-size:22px;line-height:1;font-weight:700}
-.wind-dir-label{font-size:9px;line-height:1.1}
-.wind-dir-toggle.primary-direction .wind-dir-arrow{font-size:27px}
-.wind-dir-toggle.primary-direction .wind-dir-label{font-size:11px;font-weight:700}
-.hg-header.extended-hour{color:#fff!important;background:#555!important;border-radius:4px 4px 0 0}
-@media(max-width:420px){.wind-compass{grid-template-rows:repeat(5,45px);gap:2px}.wind-dir-arrow{font-size:19px}.wind-dir-label{font-size:8px}.wind-dir-toggle.primary-direction .wind-dir-arrow{font-size:23px}.wind-dir-toggle.primary-direction .wind-dir-label{font-size:9px}}
-.wind-dir-toggle:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* The SVG wedges are the controls; each is an independent 16-point NWS direction. */
+.wind-compass{width:min(100%,410px);margin:0 auto 14px;position:relative}
+.wind-compass svg{display:block;width:100%;height:auto;overflow:visible}
+.wind-wedge{fill:#D7D7D2;stroke:#FFFFFF;stroke-width:.9;stroke-linejoin:round;cursor:pointer;transition:fill .15s,filter .15s}
+.wind-wedge.accepted{fill:#43B957;stroke:#FFFFFF}
+.wind-wedge:hover{filter:brightness(.9)}
+.wind-wedge:focus-visible{outline:none;stroke:#173C9A;stroke-width:2.2}
+.wind-compass-label{font-family:Arial,sans-serif;font-weight:800;font-size:6.3px;fill:var(--text,#222);text-anchor:middle;pointer-events:none}
+.wind-compass-center{fill:var(--surface,#fff);stroke:#A4AAA5;stroke-width:.55;pointer-events:none}
+@media(max-width:600px){.wind-compass{width:min(100%,340px)}}
 .badge-os{padding:3px 8px;background:rgba(245,240,232,.1);border-radius:16px;font-family:var(--font-mono);font-size:8px;color:rgba(245,240,232,.5);border:1px solid rgba(245,240,232,.08);letter-spacing:.05em}
 .nav-tabs{display:flex;gap:3px;margin-top:14px;overflow-x:auto;padding-bottom:2px;position:relative}
 .nav-tab{padding:5px 12px;border-radius:16px;border:none;background:transparent;color:rgba(245,240,232,.45);font-family:var(--font-body);font-size:12px;font-weight:400;cursor:pointer;white-space:nowrap;transition:all .2s}
@@ -70,7 +73,7 @@ var RXBURNSCOUT_VERSION='v0.2.2';
 .form-input,.form-select{padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);background:var(--bg);font-family:var(--font-mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s;width:100%}
 .form-input:focus,.form-select:focus{border-color:var(--pass)}.form-input::placeholder{color:var(--text-muted)}
 .location-help{font-size:12px;line-height:1.5;color:var(--text-secondary);margin:3px 0 8px}
-#locationMap{height:300px;width:100%;border:1px solid var(--border-strong);border-radius:8px;z-index:1;background:#e9e4d8}
+.map-scroll-buffer{padding:0 18px;touch-action:pan-y;overscroll-behavior:contain}#locationMap{height:300px;width:100%;border:1px solid var(--border-strong);border-radius:8px;z-index:1;background:#e9e4d8;touch-action:pan-x pan-y}@media(max-width:600px){.map-scroll-buffer{padding:0 12px}}
 .map-coordinates{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);margin-top:7px}
 .map-attribution-note{font-size:10px;line-height:1.4;color:var(--text-muted);margin-top:5px}
 .param-min-fixed{background:rgba(75,63,47,.025);border-color:rgba(75,63,47,.06);color:var(--text-muted);opacity:.45;user-select:none;-webkit-user-select:none;pointer-events:none}
@@ -117,8 +120,15 @@ var RXBURNSCOUT_VERSION='v0.2.2';
 .status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}.status-dot.pass{background:var(--pass)}.status-dot.fail{background:var(--fail)}
 .empty-state{text-align:center;padding:36px 20px;color:var(--text-muted)}.empty-state h3{font-family:var(--font-display);font-size:18px;color:var(--text-secondary);margin-bottom:6px}
 /* The unit editor is displayed above the current view as a modal. */
-.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:20px 20px 80px;overflow-y:auto}
-.modal-overlay.open{display:flex}.modal{background:var(--surface);border-radius:var(--radius);padding:22px;max-width:520px;width:100%;margin-top:40px;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+/* Scroll the form itself, not the shaded page overlay. Native scrollbar
+   styling remains optional so keyboard, wheel, and touch scrolling still work. */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:100;display:none;align-items:flex-start;justify-content:center;padding:24px 34px;overflow:hidden;overscroll-behavior:contain}
+.modal-overlay.open{display:flex}.modal{background:var(--surface);border-radius:var(--radius);padding:22px;max-width:620px;width:100%;max-height:100%;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable;scrollbar-width:auto;scrollbar-color:#827665 #e9e5dd;box-shadow:0 20px 60px rgba(0,0,0,.2)}
+.modal::-webkit-scrollbar{width:13px}
+.modal::-webkit-scrollbar-track{background:#e9e5dd;border-radius:0 var(--radius) var(--radius) 0}
+.modal::-webkit-scrollbar-thumb{background:#827665;border:2px solid #e9e5dd;border-radius:10px}
+.modal::-webkit-scrollbar-thumb:hover{background:#635746}
+@media(max-width:600px){.modal-overlay{padding:12px 10px}}
 .modal-title{font-family:var(--font-display);font-size:18px;font-weight:600;margin-bottom:14px}
 .param-config{display:grid;grid-template-columns:110px 1fr 1fr;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}.param-config:last-child{border-bottom:none}
 .param-name{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-secondary)}
@@ -336,7 +346,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
       <div class="form-group"><div class="form-label burn-window-label"><label for="unitMinHours">Burn Window</label><details class="burn-window-help"><summary aria-label="Explain Burn Window" title="What is a Burn Window?">i</summary><div class="burn-window-tip" role="tooltip"><strong>WHAT IS A BURN WINDOW?</strong>A burn window is a period when the forecast meets all of your specified weather criteria.<br><br>This setting determines the minimum number of <b>consecutive hours</b> those conditions must be met for RxBurnScout to identify a qualifying window.<br><br>For example, a setting of 4 hours means that all specified criteria must be satisfied for at least four consecutive forecast hours. If even one criterion fails during an hour, that hour does not count toward the required duration.<br><br>This identifies a potential forecast window; it does not guarantee that conditions on the ground are suitable or that a burn should proceed.</div></details></div><div class="number-unit-wrap"><input class="form-input" id="unitMinHours" type="number" min="1" max="12" value="4"><span class="number-unit-suffix" aria-hidden="true">hours</span></div></div>
     </div>
     <div class="form-group" style="margin-bottom:10px"><div class="form-label burn-window-label"><label for="locSearch">FIND COORDINATES BY LOCATION</label><details class="burn-window-help"><summary aria-label="Explain Find Coordinates" title="How does location search work?">i</summary><div class="burn-window-tip" role="tooltip"><strong>FIND COORDINATES</strong>Search for a nearby town, address, or landmark to jump to the general area. Then click the map to choose a representative point for the weather forecast.</div></details></div><div class="loc-search-wrap"><input class="form-input" id="locSearch" placeholder="e.g., Farmington, Missouri" autocomplete="off"><div class="loc-results" id="locResults"></div></div></div>
-    <div class="form-group" style="margin-bottom:10px"><div class="form-label burn-window-label"><label for="locationMap">SELECT A POINT ON THE MAP</label><details class="burn-window-help"><summary aria-label="Explain Selected Coordinates" title="What do the selected coordinates mean?">i</summary><div class="burn-window-tip" role="tooltip"><strong>SELECTED COORDINATES</strong>The selected point is used to request a forecast from the National Weather Service.</div></details></div><div id="locationMap" role="application" aria-label="Map for selecting forecast coordinates"></div><div class="map-coordinates" id="mapCoordinates">Selected coordinates: none</div></div>
+    <div class="form-group" style="margin-bottom:10px"><div class="form-label burn-window-label"><label for="locationMap">SELECT A POINT ON THE MAP</label><details class="burn-window-help"><summary aria-label="Explain Selected Coordinates" title="What do the selected coordinates mean?">i</summary><div class="burn-window-tip" role="tooltip"><strong>SELECTED COORDINATES</strong>The selected point is used to request a forecast from the National Weather Service.</div></details></div><div class="map-scroll-buffer"><div id="locationMap" role="application" aria-label="Map for selecting forecast coordinates"></div></div><div class="map-coordinates" id="mapCoordinates">Selected coordinates: none</div></div>
     <div class="form-row three">
       <div class="form-group"><label class="form-label" for="unitLat">LATITUDE</label><input class="form-input" id="unitLat" type="number" step="any" placeholder="38.63"></div>
       <div class="form-group"><label class="form-label" for="unitLon">LONGITUDE</label><input class="form-input" id="unitLon" type="number" step="any" placeholder="-90.20"></div>
@@ -344,8 +354,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
     <div class="card-label" style="margin-top:6px">PARAMETER WINDOWS</div>
     <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">All parameters must be in range simultaneously for an hour to pass.</p>
     <div id="paramFields"></div>
-    <div class="card-label" style="margin-top:14px">WIND DIRECTION</div>
-    <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">Select acceptable wind directions.</p>
+    <div class="card-label burn-window-label" style="margin-top:14px">WIND DIRECTION <details class="burn-window-help"><summary aria-label="Explain wind direction selection" title="How do I select wind directions?">i</summary><div class="burn-window-tip" role="tooltip"><strong>WIND DIRECTIONS</strong>Green = acceptable wind direction. Grey = unacceptable wind direction. Click wedges to toggle.</div></details></div>
     <div id="windDirChecks" class="wind-compass" style="margin-bottom:14px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-secondary" onclick="closeUnitModal()">Cancel</button><button class="btn btn-primary" onclick="saveUnit()">Save &amp; Analyze</button></div>
   </div>
@@ -627,17 +636,26 @@ function openUnitAnalysis(idx){if(idx<0||idx>=units.length)return;selectedUnitId
 // Create the min/max controls for the four supported weather parameters.
 // Precipitation probability has a fixed minimum of zero in this interface.
 function buildParamFields(params){var p=params||DEFAULT_PARAMS;document.getElementById('paramFields').innerHTML=p.map(function(param,i){var fixedMin=param.key==='precipProbability';return '<div class="param-config"><div class="param-name">'+esc(param.label)+' ('+esc(param.unit)+')</div><div class="form-group"><label class="form-label">MIN</label><input class="form-input param-min'+(fixedMin?' param-min-fixed':'')+'" data-idx="'+i+'" type="number" step="any" value="'+(fixedMin?0:param.min)+'"'+(fixedMin?' disabled tabindex="-1" aria-label="Minimum precipitation probability fixed at zero"':'')+'></div><div class="form-group"><label class="form-label">MAX</label><input class="form-input param-max" data-idx="'+i+'" type="number" step="any" value="'+param.max+'"></div></div>';}).join('');}
-// Place each compass point around a 5-by-5 grid; arrows point from the wind's
-// reported source direction inward toward the center of the compass.
-var WIND_LAYOUT={
-  N:{row:1,col:3,arrow:'↓'},NNE:{row:1,col:4,arrow:'↙'},NE:{row:2,col:4,arrow:'↙'},ENE:{row:2,col:5,arrow:'↙'},
-  E:{row:3,col:5,arrow:'←'},ESE:{row:4,col:5,arrow:'↖'},SE:{row:4,col:4,arrow:'↖'},SSE:{row:5,col:4,arrow:'↖'},
-  S:{row:5,col:3,arrow:'↑'},SSW:{row:5,col:2,arrow:'↗'},SW:{row:4,col:2,arrow:'↗'},WSW:{row:4,col:1,arrow:'↗'},
-  W:{row:3,col:1,arrow:'→'},WNW:{row:2,col:1,arrow:'↘'},NW:{row:2,col:2,arrow:'↘'},NNW:{row:1,col:2,arrow:'↘'}
-};
-function buildWindDirChecks(sel,acceptAllWhenEmpty){var s=sel||[],acceptAll=acceptAllWhenEmpty===true,html='';WIND_DIRS.forEach(function(d){var accepted=acceptAll||s.indexOf(d)>=0,l=WIND_LAYOUT[d],primary=['N','E','S','W'].indexOf(d)>=0;html+='<button type="button" class="wind-dir-toggle '+(accepted?'accepted':'rejected')+(primary?' primary-direction':'')+'" style="grid-row:'+l.row+';grid-column:'+l.col+'" data-direction="'+d+'" aria-pressed="'+accepted+'" title="Wind from '+d+' is '+(accepted?'acceptable':'not acceptable')+'" onclick="toggleWindDir(this)"><span class="wind-dir-arrow" aria-hidden="true">'+l.arrow+'</span><span class="wind-dir-label">'+d+'</span></button>';});document.getElementById('windDirChecks').className='wind-compass';document.getElementById('windDirChecks').innerHTML=html;}
-// Toggle a direction's accepted/rejected state; green means accepted, orange rejected.
-function toggleWindDir(button){var accepted=button.classList.contains('accepted');accepted=!accepted;button.classList.toggle('accepted',accepted);button.classList.toggle('rejected',!accepted);button.setAttribute('aria-pressed',String(accepted));button.title='Wind from '+button.dataset.direction+' is '+(accepted?'acceptable':'not acceptable');}
+// Wedge geometry is taken from the supplied Inkscape SVG. Eight labels remain
+// visible, while all sixteen NWS directions are individually selectable.
+var WIND_COMPASS_SVG='<svg viewBox="28 116 94 91" xmlns="http://www.w3.org/2000/svg" aria-label="Select acceptable wind directions"><path class="wind-wedge" data-direction="N" d="m 69.122358,128.16411 h 12.003923 l -5.799648,21.8231 z" role="button" tabindex="0" aria-label="Wind from N" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="NNE" d="m 83.967531,129.19812 7.610831,3.2505 -12.277062,18.5657 z" role="button" tabindex="0" aria-label="Wind from NNE" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="NE" d="M 102.52874,141.81762 94.040659,133.32957 82.71036,152.8618 Z" role="button" tabindex="0" aria-label="Wind from NE" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="ENE" d="m 103.79856,144.16401 2.7774,7.79593 -21.967791,3.58165 z" role="button" tabindex="0" aria-label="Wind from ENE" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="E" d="m 106.85707,166.03576 v -12.00392 l -21.823101,5.79964 z" role="button" tabindex="0" aria-label="Wind from E" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="ESE" d="m 103.6642,175.81806 2.7774,-7.79593 -21.967793,-3.58165 z" role="button" tabindex="0" aria-label="Wind from ESE" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="SE" d="m 102.65883,178.68034 -8.488097,8.48805 -11.330299,-19.53223 z" role="button" tabindex="0" aria-label="Wind from SE" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="SSE" d="m 84.405728,191.73504 7.610831,-3.2505 -12.277062,-18.5657 z" role="button" tabindex="0" aria-label="Wind from SSE" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="S" d="M 81.089837,191.98532 H 69.085914 l 5.799648,-21.8231 z" role="button" tabindex="0" aria-label="Wind from S" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="SSW" d="m 65.451657,191.88052 -7.610831,-3.2505 12.277062,-18.5657 z" role="button" tabindex="0" aria-label="Wind from SSW" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="SW" d="m 46.934096,178.80597 8.488101,8.48805 11.330299,-19.53223 z" role="button" tabindex="0" aria-label="Wind from SW" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="WSW" d="m 45.951703,176.23873 -2.7774,-7.79593 21.967795,-3.58165 z" role="button" tabindex="0" aria-label="Wind from WSW" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="W" d="m 43.036832,166.0088 v -12.00392 l 21.823102,5.79964 z" role="button" tabindex="0" aria-label="Wind from W" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="WNW" d="m 46.268821,144.36237 -2.7774,7.79593 21.967795,3.58165 z" role="button" tabindex="0" aria-label="Wind from WNW" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="NW" d="m 47.713001,141.23673 8.488053,-8.48805 11.330299,19.53223 z" role="button" tabindex="0" aria-label="Wind from NW" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><path class="wind-wedge" data-direction="NNW" d="m 66.110533,129.11016 -7.610831,3.2505 12.277062,18.5657 z" role="button" tabindex="0" aria-label="Wind from NNW" onclick="toggleWindDir(this)" onkeydown="windDirKeydown(event,this)"></path><text class="wind-compass-label" x="75" y="124">N</text><text class="wind-compass-label" x="103" y="134">NE</text><text class="wind-compass-label" x="113" y="162">E</text><text class="wind-compass-label" x="103" y="189">SE</text><text class="wind-compass-label" x="75" y="201">S</text><text class="wind-compass-label" x="47" y="189">SW</text><text class="wind-compass-label" x="37" y="162">W</text><text class="wind-compass-label" x="47" y="134">NW</text></svg>';
+function setWindWedgeState(wedge,accepted){
+  wedge.classList.toggle('accepted',accepted);
+  wedge.classList.toggle('rejected',!accepted);
+  wedge.setAttribute('aria-pressed',String(accepted));
+  wedge.setAttribute('aria-label','Wind from '+wedge.dataset.direction+': '+(accepted?'accepted':'excluded'));
+  wedge.setAttribute('title','Wind from '+wedge.dataset.direction+' is '+(accepted?'acceptable':'not acceptable'));
+}
+function buildWindDirChecks(sel,acceptAllWhenEmpty){
+  var selected=sel||[],acceptAll=acceptAllWhenEmpty===true;
+  var container=document.getElementById('windDirChecks');
+  container.innerHTML=WIND_COMPASS_SVG;
+  container.querySelectorAll('.wind-wedge').forEach(function(wedge){
+    setWindWedgeState(wedge,acceptAll||selected.indexOf(wedge.dataset.direction)>=0);
+  });
+}
+function toggleWindDir(wedge){setWindWedgeState(wedge,!wedge.classList.contains('accepted'));}
+function windDirKeydown(event,wedge){if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleWindDir(wedge);}}
 
 // Reset the editor to its defaults for a brand-new burn unit.
 function openUnitModal(){document.getElementById('editUnitId').value='';document.getElementById('modalTitle').textContent='New Burn Unit';document.getElementById('unitName').value='';document.getElementById('unitLat').value='';document.getElementById('unitLon').value='';document.getElementById('unitLat').dataset.preciseValue='';document.getElementById('unitLon').dataset.preciseValue='';document.getElementById('mapCoordinates').textContent='Selected coordinates: none';document.getElementById('unitMinHours').value='4';document.getElementById('locSearch').value='';if(locationMarker){locationMap.removeLayer(locationMarker);locationMarker=null;}buildParamFields();buildWindDirChecks([],true);document.getElementById('unitModal').classList.add('open');initializeLocationMap();}
@@ -655,7 +673,7 @@ function saveUnit(){
   if(!name){alert('Enter a unit name.');return;}if(isNaN(lat)||isNaN(lon)){alert('Enter valid coordinates or use the location search.');return;}
   if(lat<24||lat>50||lon<-125||lon>-66){if(!confirm('Coordinates appear outside the continental US. NWS data is US-only. Continue?'))return;}
   var params=DEFAULT_PARAMS.map(function(dp,i){var mn=document.querySelector('.param-min[data-idx="'+i+'"]'),mx=document.querySelector('.param-max[data-idx="'+i+'"]');return{key:dp.key,label:dp.label,unit:dp.unit,min:parseFloat(mn.value),max:parseFloat(mx.value)};});
-  var windDirs=Array.from(document.querySelectorAll('.wind-dir-toggle.accepted')).map(function(c){return c.dataset.direction;});
+  var windDirs=Array.from(document.querySelectorAll('.wind-wedge.accepted')).map(function(c){return c.dataset.direction;});
   var editIdx=document.getElementById('editUnitId').value,savedIdx;
   if(editIdx!==''){savedIdx=parseInt(editIdx);if(units[savedIdx].lat!==lat||units[savedIdx].lon!==lon){delete forecastData[units[savedIdx].id];delete forecastFetchedOn[units[savedIdx].id];}units[savedIdx]={id:units[savedIdx].id,color:units[savedIdx].color,name:name,lat:lat,lon:lon,minHours:minHours,params:params,windDirs:windDirs,windDirsFilterEnabled:true};}
   else{var color=UNIT_COLORS[units.length%UNIT_COLORS.length];var id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);units.push({id:id,name:name,lat:lat,lon:lon,minHours:minHours,params:params,windDirs:windDirs,windDirsFilterEnabled:true,color:color});savedIdx=units.length-1;}
