@@ -6,6 +6,7 @@ var RXBURNSCOUT_VERSION='v0.2.3';
 // visual contrast between accepted and rejected directions.
 // Replaced the grid buttons with 16 clickable SVG wedges and 8 named labels.
 // Refined diagonal label positions and moved the wind-direction key into help.
+// Keep help bubbles inside the form and suppress Chromium SVG wedge focus rectangles.
 // Added a visible native scrollbar inside the burn-unit editor while retaining
 // the map-side scrolling buffer.
 </script>
@@ -44,7 +45,8 @@ var RXBURNSCOUT_VERSION='v0.2.3';
 .wind-wedge{fill:#D7D7D2;stroke:#FFFFFF;stroke-width:.9;stroke-linejoin:round;cursor:pointer;transition:fill .15s,filter .15s}
 .wind-wedge.accepted{fill:#43B957;stroke:#FFFFFF}
 .wind-wedge:hover{filter:brightness(.9)}
-.wind-wedge:focus-visible{outline:none;stroke:#173C9A;stroke-width:2.2}
+.wind-wedge:focus{outline:none} /* Prevent Chromium's rectangular SVG focus ring. */
+.wind-wedge:focus-visible{stroke:#173C9A;stroke-width:2.2} /* Keyboard focus follows the wedge shape. */
 .wind-compass-label{font-family:Arial,sans-serif;font-weight:800;font-size:6.3px;fill:var(--text,#222);text-anchor:middle;pointer-events:none}
 .wind-compass-center{fill:var(--surface,#fff);stroke:#A4AAA5;stroke-width:.55;pointer-events:none}
 @media(max-width:600px){.wind-compass{width:min(100%,340px)}}
@@ -65,7 +67,7 @@ var RXBURNSCOUT_VERSION='v0.2.3';
 .burn-window-help summary{list-style:none;display:inline-flex;align-items:center;justify-content:center;width:14px;height:14px;border:1px solid var(--text-muted);border-radius:50%;font-family:var(--font-body);font-size:10px;font-weight:700;line-height:1;color:var(--text-muted);cursor:pointer;user-select:none}
 .burn-window-help summary::-webkit-details-marker{display:none}
 .burn-window-help summary:focus-visible{outline:2px solid var(--pass);outline-offset:2px}
-.burn-window-tip{position:absolute;top:calc(100% + 7px);right:0;width:min(290px, calc(100vw - 64px));z-index:120;background:#FFFDF8;color:var(--text);border:1px solid var(--border-strong);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.18);font-family:var(--font-body);font-size:12px;line-height:1.5;font-weight:400;letter-spacing:0;white-space:normal}
+.burn-window-tip{position:absolute;top:calc(100% + 7px);left:0;right:auto;width:min(290px, calc(100vw - 96px));z-index:120;background:#FFFDF8;color:var(--text);border:1px solid var(--border-strong);border-radius:10px;padding:12px 14px;box-shadow:0 10px 30px rgba(0,0,0,.18);font-family:var(--font-body);font-size:12px;line-height:1.5;font-weight:400;letter-spacing:0;white-space:normal}
 .burn-window-tip strong{display:block;font-family:var(--font-mono);font-size:10px;letter-spacing:.04em;margin-bottom:5px;color:var(--text-muted)}
 .number-unit-wrap{display:flex;align-items:center;gap:6px}
 .number-unit-wrap .form-input{width:96px;flex:0 0 96px;padding-right:8px}
@@ -354,7 +356,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
     <div class="card-label" style="margin-top:6px">PARAMETER WINDOWS</div>
     <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">All parameters must be in range simultaneously for an hour to pass.</p>
     <div id="paramFields"></div>
-    <div class="card-label burn-window-label" style="margin-top:14px">WIND DIRECTION <details class="burn-window-help"><summary aria-label="Explain wind direction selection" title="How do I select wind directions?">i</summary><div class="burn-window-tip" role="tooltip"><strong>WIND DIRECTIONS</strong>Green = acceptable wind direction. Grey = unacceptable wind direction. Click wedges to toggle.</div></details></div>
+    <div class="card-label burn-window-label" style="margin-top:14px">WIND DIRECTION <details class="burn-window-help"><summary aria-label="Explain wind direction selection" title="How do I select wind directions?">i</summary><div class="burn-window-tip" role="tooltip"><strong>WIND DIRECTIONS</strong>Green = acceptable wind direction.<br>Grey = unacceptable wind direction.<br>Click wedges to toggle.</div></details></div>
     <div id="windDirChecks" class="wind-compass" style="margin-bottom:14px"></div>
     <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px"><button class="btn btn-secondary" onclick="closeUnitModal()">Cancel</button><button class="btn btn-primary" onclick="saveUnit()">Save &amp; Analyze</button></div>
   </div>
