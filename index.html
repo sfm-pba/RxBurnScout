@@ -1,14 +1,14 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v0.2.3';
-// v0.2.3 revisions: widened the burn-unit editor and added touch-scroll buffer
-// around the location map; clarified wind-direction selection with a stronger
-// visual contrast between accepted and rejected directions.
-// Replaced the grid buttons with 16 clickable SVG wedges and 8 named labels.
-// Refined diagonal label positions and moved the wind-direction key into help.
-// Keep help bubbles inside the form and suppress Chromium SVG wedge focus rectangles.
-// Added a visible native scrollbar inside the burn-unit editor while retaining
-// the map-side scrolling buffer.
+var RXBURNSCOUT_VERSION='v0.2.4';
+// v0.2.4 revisions: new burn units inherit the map center, marker, and precise
+// coordinates of the most recently saved unit. The first unit starts with no
+// selected location and a nationwide U.S. overview map. Editing always opens that
+// unit's own coordinates. A per-unit save timestamp preserves the choice after
+// reload, export/import, or unit sync without creating a separate setting.
+// Simplified the editor by removing place search and its Nominatim request;
+// opening either a new or existing unit always starts the form at the top.
+// A new user sees a U.S.-centered overview (39 N, 98 W; zoom 4), with no marker.
 </script>
 <!-- RxBurnScout v0.2.0 — responsive readability and bottom-clearance refinements. -->
 <html lang="en">
@@ -74,10 +74,8 @@ var RXBURNSCOUT_VERSION='v0.2.3';
 .number-unit-suffix{position:static;transform:none;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);pointer-events:none}
 .form-input,.form-select{padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);background:var(--bg);font-family:var(--font-mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s;width:100%}
 .form-input:focus,.form-select:focus{border-color:var(--pass)}.form-input::placeholder{color:var(--text-muted)}
-.location-help{font-size:12px;line-height:1.5;color:var(--text-secondary);margin:3px 0 8px}
 .map-scroll-buffer{padding:0 18px;touch-action:pan-y;overscroll-behavior:contain}#locationMap{height:300px;width:100%;border:1px solid var(--border-strong);border-radius:8px;z-index:1;background:#e9e4d8;touch-action:pan-x pan-y}@media(max-width:600px){.map-scroll-buffer{padding:0 12px}}
 .map-coordinates{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);margin-top:7px}
-.map-attribution-note{font-size:10px;line-height:1.4;color:var(--text-muted);margin-top:5px}
 .param-min-fixed{background:rgba(75,63,47,.025);border-color:rgba(75,63,47,.06);color:var(--text-muted);opacity:.45;user-select:none;-webkit-user-select:none;pointer-events:none}
 .param-min-fixed::-webkit-inner-spin-button,.param-min-fixed::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}
 .param-min-fixed{-moz-appearance:textfield;appearance:textfield}
@@ -137,10 +135,6 @@ var RXBURNSCOUT_VERSION='v0.2.3';
 .summary-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}.summary-row:last-child{border-bottom:none}
 .sync-indicator{font-family:var(--font-mono);font-size:9px;padding:3px 8px;border-radius:12px;display:inline-flex;align-items:center;gap:4px}
 .sync-indicator.connected{background:var(--pass-bg);color:var(--pass)}.sync-indicator.local{background:rgba(75,63,47,.06);color:var(--text-muted)}
-.loc-search-wrap{position:relative}.loc-results{position:absolute;top:100%;left:0;right:0;z-index:10;background:var(--surface);border:1px solid var(--border-strong);border-radius:var(--radius-sm);box-shadow:0 8px 24px rgba(0,0,0,.12);max-height:200px;overflow-y:auto;display:none}
-.loc-results.open{display:block}.loc-result{padding:8px 10px;font-size:12px;cursor:pointer;border-bottom:1px solid var(--border);transition:background .15s}
-.loc-result{display:block;width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid var(--border);font-family:var(--font-body)}.loc-result:hover,.loc-result.active{background:var(--pass-bg)}.loc-result:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}.loc-result:last-child{border-bottom:none}
-.loc-result-name{font-weight:500;color:var(--text)}.loc-result-detail{font-size:10px;color:var(--text-muted);margin-top:2px;font-family:var(--font-mono)}
 /* Muted no-window days */
 .summary-row.muted{opacity:.45}.summary-row.muted:hover{opacity:.8}
 .summary-row.selected{background:rgba(75,63,47,.04);border-radius:6px}
@@ -185,7 +179,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
   .hourly-grid{font-size:13px}
   .hg-header,.hg-label{font-size:11px}
   .hg-cell{font-size:12px}
-  .info-box,.loc-result{font-size:14px}
+  .info-box{font-size:14px}
 }
 /* On narrow screens, keep the compact navigation short and easy to tap. */
 @media(max-width:600px){
@@ -300,7 +294,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
     <div class="info-box warn"><strong>This tool identifies potential burn windows — it does not tell you when to burn.</strong> The decision always belongs to the land manager.</div>
     <div class="card">
       <div class="card-label">DATA SOURCE &amp; LIMITATIONS</div>
-      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:8px">Forecast data from the <strong>National Weather Service API</strong> (api.weather.gov). Free, public, no key required. Location search and the interactive map use OpenStreetMap data. The selected point helps choose a forecast grid; it does not guarantee site-specific weather accuracy.</p>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:8px">Forecast data from the <strong>National Weather Service API</strong> (api.weather.gov). Free, public, no key required. The interactive map uses OpenStreetMap data. The selected point helps choose a forecast grid; it does not guarantee site-specific weather accuracy.</p>
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:8px"><strong>Available now:</strong> Wind speed, wind direction, relative humidity, precipitation probability, temperature.</p>
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary)"><strong>Future versions:</strong> Mixing height, Haines Index, transport winds (require fire weather data sources). Post-burn condition monitoring. Automated email/SMS alerts.</p>
     </div>
@@ -347,7 +341,6 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
       <div class="form-group"><label class="form-label">UNIT NAME</label><input class="form-input" id="unitName" placeholder="e.g. North Prairie - Unit A"></div>
       <div class="form-group"><div class="form-label burn-window-label"><label for="unitMinHours">Burn Window</label><details class="burn-window-help"><summary aria-label="Explain Burn Window" title="What is a Burn Window?">i</summary><div class="burn-window-tip" role="tooltip"><strong>WHAT IS A BURN WINDOW?</strong>A burn window is a period when the forecast meets all of your specified weather criteria.<br><br>This setting determines the minimum number of <b>consecutive hours</b> those conditions must be met for RxBurnScout to identify a qualifying window.<br><br>For example, a setting of 4 hours means that all specified criteria must be satisfied for at least four consecutive forecast hours. If even one criterion fails during an hour, that hour does not count toward the required duration.<br><br>This identifies a potential forecast window; it does not guarantee that conditions on the ground are suitable or that a burn should proceed.</div></details></div><div class="number-unit-wrap"><input class="form-input" id="unitMinHours" type="number" min="1" max="12" value="4"><span class="number-unit-suffix" aria-hidden="true">hours</span></div></div>
     </div>
-    <div class="form-group" style="margin-bottom:10px"><div class="form-label burn-window-label"><label for="locSearch">FIND COORDINATES BY LOCATION</label><details class="burn-window-help"><summary aria-label="Explain Find Coordinates" title="How does location search work?">i</summary><div class="burn-window-tip" role="tooltip"><strong>FIND COORDINATES</strong>Search for a nearby town, address, or landmark to jump to the general area. Then click the map to choose a representative point for the weather forecast.</div></details></div><div class="loc-search-wrap"><input class="form-input" id="locSearch" placeholder="e.g., Farmington, Missouri" autocomplete="off"><div class="loc-results" id="locResults"></div></div></div>
     <div class="form-group" style="margin-bottom:10px"><div class="form-label burn-window-label"><label for="locationMap">SELECT A POINT ON THE MAP</label><details class="burn-window-help"><summary aria-label="Explain Selected Coordinates" title="What do the selected coordinates mean?">i</summary><div class="burn-window-tip" role="tooltip"><strong>SELECTED COORDINATES</strong>The selected point is used to request a forecast from the National Weather Service.</div></details></div><div class="map-scroll-buffer"><div id="locationMap" role="application" aria-label="Map for selecting forecast coordinates"></div></div><div class="map-coordinates" id="mapCoordinates">Selected coordinates: none</div></div>
     <div class="form-row three">
       <div class="form-group"><label class="form-label" for="unitLat">LATITUDE</label><input class="form-input" id="unitLat" type="number" step="any" placeholder="38.63"></div>
@@ -385,7 +378,7 @@ var DEFAULT_PARAMS=[
 ];
 // In-memory application state. 'units' and 'config' are persisted locally;
 // forecast data and active selections are temporary browser-session state.
-var units=[],config={syncUrl:'',token:''},activeView='units',selectedUnitIdx=0,forecastData={},forecastTimeZones={},forecastFetchedOn={},forecastFetchedAt={},forecastRequests={},forecastRequestSequence=0,selectedDay=0,locSearchTimeout=null,forecastAgeInterval=null;
+var units=[],config={syncUrl:'',token:''},activeView='units',selectedUnitIdx=0,forecastData={},forecastTimeZones={},forecastFetchedOn={},forecastFetchedAt={},forecastRequests={},forecastRequestSequence=0,selectedDay=0,forecastAgeInterval=null;
 // Prevent a weather request from hanging indefinitely. The minimum error display
 // time avoids an error message flashing too quickly to read.
 var FORECAST_TIMEOUT_MS=15000, FORECAST_ERROR_MIN_MS=3000;
@@ -434,11 +427,6 @@ document.addEventListener('keydown',function(e){
       e.preventDefault();e.stopImmediatePropagation();
       if(Object.prototype.hasOwnProperty.call(field.dataset,'escapeOriginalValue'))field.value=field.dataset.escapeOriginalValue;
       field.blur();
-      if(field.id==='locSearch'){
-        clearTimeout(locSearchTimeout);
-        document.getElementById('locResults').classList.remove('open');
-        locActiveIndex=-1;
-      }
       return;
     }
     e.preventDefault();closeUnitModal();return;
@@ -518,45 +506,14 @@ document.getElementById('navTabs').addEventListener('click',function(e){
   if(activeView==='analysis')renderAnalysis();if(activeView==='settings')renderSettings();
 });
 
-var locActiveIndex=-1;
-// Debounce location searches so a network request is not sent for every keystroke.
-document.getElementById('locSearch').addEventListener('input',function(e){
-  clearTimeout(locSearchTimeout);locActiveIndex=-1;var q=e.target.value.trim();
-  if(q.length<3){document.getElementById('locResults').classList.remove('open');return;}
-  locSearchTimeout=setTimeout(function(){searchLocation(q);},400);
-});
-// Use the arrow keys to highlight a result and Enter to choose it without the mouse.
-document.getElementById('locSearch').addEventListener('keydown',function(e){
-  var results=document.querySelectorAll('#locResults button.loc-result');
-  if(e.key==='ArrowDown'&&results.length){e.preventDefault();locActiveIndex=Math.min(locActiveIndex+1,results.length-1);updateActiveLocationResult(results);}
-  else if(e.key==='ArrowUp'&&results.length){e.preventDefault();locActiveIndex=Math.max(locActiveIndex<=0?0:locActiveIndex-1,0);updateActiveLocationResult(results);}
-  else if(e.key==='Enter'&&document.getElementById('locResults').classList.contains('open')&&locActiveIndex>=0&&results[locActiveIndex]){e.preventDefault();results[locActiveIndex].click();}
-});
-function updateActiveLocationResult(results){
-  results.forEach(function(result,i){result.classList.toggle('active',i===locActiveIndex);result.setAttribute('aria-selected',String(i===locActiveIndex));});
-  if(results[locActiveIndex])results[locActiveIndex].scrollIntoView({block:'nearest'});
-}
-
-// Search OpenStreetMap Nominatim for places that can help the user navigate to an area.
-// Choosing a result moves the map; the user still chooses the final point on the map.
-async function searchLocation(query){
-  var r=document.getElementById('locResults');locActiveIndex=-1;
-  try{
-    var res=await fetch('https://nominatim.openstreetmap.org/search?q='+encodeURIComponent(query)+'&format=json&limit=5&countrycodes=us');
-    if(!res.ok)throw new Error('Location search failed');
-    var data=await res.json();
-    if(data.length===0){r.innerHTML='<div class="loc-result" style="color:var(--text-muted);cursor:default">No results</div>';}
-    else{r.innerHTML=data.map(function(d,i){return '<button type="button" class="loc-result" role="option" aria-selected="false" onclick="navigateToLocation('+Number(d.lat)+','+Number(d.lon)+',decodeURIComponent(\''+encodeURIComponent(d.display_name)+'\'))"><div class="loc-result-name">'+esc(d.display_name.split(',').slice(0,2).join(', '))+'</div><div class="loc-result-detail">'+Number(d.lat).toFixed(2)+', '+Number(d.lon).toFixed(2)+'</div></button>';}).join('');}
-    r.classList.add('open');
-  }catch(e){r.innerHTML='<div class="loc-result" style="color:var(--fail);cursor:default">Search unavailable. You can still choose a point on the map.</div>';r.classList.add('open');}
-}
-
+// Default first-unit overview: central contiguous U.S.; no location is selected yet.
+var DEFAULT_MAP_CENTER=[39.0,-98.0],DEFAULT_MAP_ZOOM=4;
 var locationMap=null,locationMarker=null,selectedPreciseLat=null,selectedPreciseLon=null;
 // Create the map only once. The marker is draggable, and clicking elsewhere on the map
 // moves it. Coordinate fields display two decimals while the precise point is retained.
 function initializeLocationMap(){
   if(!locationMap){
-    locationMap=L.map('locationMap').setView([38.5,-90.5],7);
+    locationMap=L.map('locationMap').setView(DEFAULT_MAP_CENTER,DEFAULT_MAP_ZOOM);
     L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>'}).addTo(locationMap);
     locationMap.on('click',function(e){setMapPoint(e.latlng.lat,e.latlng.lng,true);});
   }
@@ -575,17 +532,8 @@ function setMapPoint(lat,lon,moveMap){
     if(moveMap)locationMap.setView([selectedPreciseLat,selectedPreciseLon],Math.max(locationMap.getZoom(),13));
   }
 }
-function navigateToLocation(lat,lon,name){
-  document.getElementById('locSearch').value=name.split(',').slice(0,2).join(', ');
-  document.getElementById('locResults').classList.remove('open');locActiveIndex=-1;
-  initializeLocationMap();
-  // A search result is a starting point. The user can click elsewhere to select the
-  // representative forecast point rather than assuming the town center is the unit.
-  setMapPoint(lat,lon,true);
-}
 // If a user edits the coordinate fields manually, treat the typed value as intentional.
 ['unitLat','unitLon'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){this.dataset.preciseValue='';selectedPreciseLat=null;selectedPreciseLon=null;document.getElementById('mapCoordinates').textContent='Coordinates entered manually; click the map to place a marker.';});});
-document.addEventListener('click',function(e){if(!e.target.closest('.loc-search-wrap')){document.getElementById('locResults').classList.remove('open');locActiveIndex=-1;}});
 
 // Rebuild the Units view from the current in-memory unit list.
 // Keep this summary deliberately simple: the unit name identifies the card,
@@ -659,10 +607,57 @@ function buildWindDirChecks(sel,acceptAllWhenEmpty){
 function toggleWindDir(wedge){setWindWedgeState(wedge,!wedge.classList.contains('accepted'));}
 function windDirKeydown(event,wedge){if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleWindDir(wedge);}}
 
-// Reset the editor to its defaults for a brand-new burn unit.
-function openUnitModal(){document.getElementById('editUnitId').value='';document.getElementById('modalTitle').textContent='New Burn Unit';document.getElementById('unitName').value='';document.getElementById('unitLat').value='';document.getElementById('unitLon').value='';document.getElementById('unitLat').dataset.preciseValue='';document.getElementById('unitLon').dataset.preciseValue='';document.getElementById('mapCoordinates').textContent='Selected coordinates: none';document.getElementById('unitMinHours').value='4';document.getElementById('locSearch').value='';if(locationMarker){locationMap.removeLayer(locationMarker);locationMarker=null;}buildParamFields();buildWindDirChecks([],true);document.getElementById('unitModal').classList.add('open');initializeLocationMap();}
+// Find the last saved unit, not simply the last one in the displayed list.
+// Pre-v0.2.4 units have no savedAt value: their list order breaks ties so the
+// most recently created older unit is the starting point until one is saved.
+// Invalid coordinates are ignored to avoid opening the map at an unusable point.
+function mostRecentlySavedUnit(){
+  var latest=null,latestTime=-1;
+  units.forEach(function(unit){
+    if(unit.lat===null||unit.lat===undefined||unit.lon===null||unit.lon===undefined||unit.lat===''||unit.lon==='')return;
+    var lat=Number(unit.lat),lon=Number(unit.lon);
+    if(!Number.isFinite(lat)||!Number.isFinite(lon)||lat< -90||lat>90||lon< -180||lon>180)return;
+    var time=Number(unit.savedAt)||0;
+    if(time>=latestTime){latest=unit;latestTime=time;}
+  });
+  return latest;
+}
+// Open the reused editor at its beginning, regardless of where the previous
+// session left the form's internal scrollbar.
+function showUnitModalAtTop(){
+  var overlay=document.getElementById('unitModal');
+  overlay.classList.add('open');
+  overlay.querySelector('.modal').scrollTop=0;
+}
+// Reset the editor for a new unit. If another unit has already been saved,
+// inherit its precise point; this is a starting position, not a shared location.
+function openUnitModal(){
+  var previous=mostRecentlySavedUnit();
+  document.getElementById('editUnitId').value='';
+  document.getElementById('modalTitle').textContent='New Burn Unit';
+  document.getElementById('unitName').value='';
+  document.getElementById('unitLat').value='';
+  document.getElementById('unitLon').value='';
+  document.getElementById('unitLat').dataset.preciseValue='';
+  document.getElementById('unitLon').dataset.preciseValue='';
+  selectedPreciseLat=null;selectedPreciseLon=null;
+  document.getElementById('mapCoordinates').textContent='Selected coordinates: none';
+  document.getElementById('unitMinHours').value='4';
+  if(locationMarker){locationMap.removeLayer(locationMarker);locationMarker=null;}
+  buildParamFields();buildWindDirChecks([],true);
+  showUnitModalAtTop();
+  initializeLocationMap();
+  if(previous){
+    // Center the map at a useful area zoom even if the previous editor zoomed in.
+    locationMap.setView([Number(previous.lat),Number(previous.lon)],13);
+    setMapPoint(previous.lat,previous.lon,false);
+  }else{
+    // Also reset the view when the last remaining unit has been deleted.
+    locationMap.setView(DEFAULT_MAP_CENTER,DEFAULT_MAP_ZOOM);
+  }
+}
 // Load one saved unit into the editor without changing it until Save is pressed.
-function editUnit(idx){var u=units[idx];document.getElementById('editUnitId').value=idx;document.getElementById('modalTitle').textContent='Edit Burn Unit';document.getElementById('unitName').value=u.name;document.getElementById('unitLat').value=Number(u.lat).toFixed(2);document.getElementById('unitLon').value=Number(u.lon).toFixed(2);document.getElementById('unitLat').dataset.preciseValue=String(u.lat);document.getElementById('unitLon').dataset.preciseValue=String(u.lon);document.getElementById('mapCoordinates').textContent='Saved coordinates: '+Number(u.lat).toFixed(2)+', '+Number(u.lon).toFixed(2);document.getElementById('unitMinHours').value=u.minHours;document.getElementById('locSearch').value='';buildParamFields(u.params);buildWindDirChecks(u.windDirs||[],u.windDirsFilterEnabled!==true&&(!u.windDirs||u.windDirs.length===0));document.getElementById('unitModal').classList.add('open');initializeLocationMap();setMapPoint(u.lat,u.lon,true);}
+function editUnit(idx){var u=units[idx];document.getElementById('editUnitId').value=idx;document.getElementById('modalTitle').textContent='Edit Burn Unit';document.getElementById('unitName').value=u.name;document.getElementById('unitLat').value=Number(u.lat).toFixed(2);document.getElementById('unitLon').value=Number(u.lon).toFixed(2);document.getElementById('unitLat').dataset.preciseValue=String(u.lat);document.getElementById('unitLon').dataset.preciseValue=String(u.lon);document.getElementById('mapCoordinates').textContent='Saved coordinates: '+Number(u.lat).toFixed(2)+', '+Number(u.lon).toFixed(2);document.getElementById('unitMinHours').value=u.minHours;buildParamFields(u.params);buildWindDirChecks(u.windDirs||[],u.windDirsFilterEnabled!==true&&(!u.windDirs||u.windDirs.length===0));showUnitModalAtTop();initializeLocationMap();setMapPoint(u.lat,u.lon,true);}
 // Hide the unit editor; unsaved edits are discarded when it is closed.
 function closeUnitModal(){document.getElementById('unitModal').classList.remove('open');}
 
@@ -672,13 +667,13 @@ function saveUnit(){
   var name=document.getElementById('unitName').value.trim();
   var lat=parseFloat(document.getElementById('unitLat').dataset.preciseValue||document.getElementById('unitLat').value),lon=parseFloat(document.getElementById('unitLon').dataset.preciseValue||document.getElementById('unitLon').value);
   var minHours=parseInt(document.getElementById('unitMinHours').value)||4;
-  if(!name){alert('Enter a unit name.');return;}if(isNaN(lat)||isNaN(lon)){alert('Enter valid coordinates or use the location search.');return;}
+  if(!name){alert('Enter a unit name.');return;}if(isNaN(lat)||isNaN(lon)){alert('Select a point on the map or enter valid coordinates.');return;}
   if(lat<24||lat>50||lon<-125||lon>-66){if(!confirm('Coordinates appear outside the continental US. NWS data is US-only. Continue?'))return;}
   var params=DEFAULT_PARAMS.map(function(dp,i){var mn=document.querySelector('.param-min[data-idx="'+i+'"]'),mx=document.querySelector('.param-max[data-idx="'+i+'"]');return{key:dp.key,label:dp.label,unit:dp.unit,min:parseFloat(mn.value),max:parseFloat(mx.value)};});
   var windDirs=Array.from(document.querySelectorAll('.wind-wedge.accepted')).map(function(c){return c.dataset.direction;});
   var editIdx=document.getElementById('editUnitId').value,savedIdx;
-  if(editIdx!==''){savedIdx=parseInt(editIdx);if(units[savedIdx].lat!==lat||units[savedIdx].lon!==lon){delete forecastData[units[savedIdx].id];delete forecastFetchedOn[units[savedIdx].id];}units[savedIdx]={id:units[savedIdx].id,color:units[savedIdx].color,name:name,lat:lat,lon:lon,minHours:minHours,params:params,windDirs:windDirs,windDirsFilterEnabled:true};}
-  else{var color=UNIT_COLORS[units.length%UNIT_COLORS.length];var id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);units.push({id:id,name:name,lat:lat,lon:lon,minHours:minHours,params:params,windDirs:windDirs,windDirsFilterEnabled:true,color:color});savedIdx=units.length-1;}
+  if(editIdx!==''){savedIdx=parseInt(editIdx);if(units[savedIdx].lat!==lat||units[savedIdx].lon!==lon){delete forecastData[units[savedIdx].id];delete forecastFetchedOn[units[savedIdx].id];}units[savedIdx]={id:units[savedIdx].id,color:units[savedIdx].color,name:name,lat:lat,lon:lon,minHours:minHours,params:params,windDirs:windDirs,windDirsFilterEnabled:true,savedAt:Date.now()};}
+  else{var color=UNIT_COLORS[units.length%UNIT_COLORS.length];var id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);units.push({id:id,name:name,lat:lat,lon:lon,minHours:minHours,params:params,windDirs:windDirs,windDirsFilterEnabled:true,color:color,savedAt:Date.now()});savedIdx=units.length-1;}
   saveLocal();renderUnits();closeUnitModal();autoSync();openUnitAnalysis(savedIdx);
 }
 // Remove a unit after confirmation and cancel any forecast request still running for it.
