@@ -1,14 +1,19 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v0.2.4';
-// v0.2.4 revisions: new burn units inherit the map center, marker, and precise
-// coordinates of the most recently saved unit. The first unit starts with no
-// selected location and a nationwide U.S. overview map. Editing always opens that
-// unit's own coordinates. A per-unit save timestamp preserves the choice after
-// reload, export/import, or unit sync without creating a separate setting.
-// Simplified the editor by removing place search and its Nominatim request;
-// opening either a new or existing unit always starts the form at the top.
-// A new user sees a U.S.-centered overview (39 N, 98 W; zoom 4), with no marker.
+var RXBURNSCOUT_VERSION='v1.0.0';
+// v1.0.0: first board-released version. The map no longer asks for a single-point, leading user to input excessive location data detail.  Instead it asks the user to select a NWS forecast grid cell.  After selecting a forecast-grid cell,
+// smoothly recenter and return to the same balanced zoom used when a new
+// unit inherits its forecast area. Users may freely zoom in for orientation;
+// high-zoom clicks still select the underlying cell. Opening an existing
+// unit directly shows its selected cell at overview zoom. Forecasts, saved
+// unit format, privacy-by-design coordinates, and grid geometry are unchanged.
+// v0.2.5: replaced pinpoint map selection with NOAA CONUS 2.5-km NDFD
+// forecast-area grid selection. The user chooses a square; RxBurnScout saves
+// only its representative center coordinates (4 decimal places), not a property
+// location. Grid outlines are a planning guide; an NWS office's hourly forecast
+// cells may differ. All v0.2.4 editor behaviors and NWS /points lookup remain.
+// Previous v0.2.4: inherit last-saved unit location when adding a new unit;
+// nationwide first-unit overview, top-of-form scroll, no place-name search.
 </script>
 <!-- RxBurnScout v0.2.0 — responsive readability and bottom-clearance refinements. -->
 <html lang="en">
@@ -286,15 +291,15 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
     <div class="card"><div class="card-title">What RxBurnScout Does</div><p style="font-size:13px;line-height:1.7;color:var(--text-secondary)">A personal tool for individual land managers. You enter desired weather conditions for your burn unit(s). RxBurnScout highlights times when all those conditions will be met based on the 7-day National Weather Service forecast.</p></div>
     <div class="card">
       <div class="card-label">HOW IT WORKS</div>
-      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>1. Configure burn units</strong> — Set a unit name and location, weather parameter ranges (wind speed, humidity, precipitation probability, temperature), and the minimum consecutive hours needed.</p>
-      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>2. Fetch the NWS forecast</strong> — The app pulls hourly forecast data from the National Weather Service API for your unit's coordinates.</p>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>1. Configure burn units</strong> — Set a unit name and a general forecast grid area, weather parameter ranges (wind speed, humidity, precipitation probability, temperature), and the minimum consecutive hours needed.</p>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>2. Fetch the NWS forecast</strong> — The app requests hourly National Weather Service data using the representative coordinate at your selected grid square's center.</p>
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>3. Hourly co-existence check</strong> — Each hour: do ALL parameters fall within your ranges simultaneously? No daily averaging, no percentage scoring. All or nothing.</p>
       <p style="font-size:13px;line-height:1.6;color:var(--text-secondary)"><strong>4. Window detection</strong> — Consecutive all-pass hours meeting your minimum duration are flagged as potential burn windows.</p>
     </div>
     <div class="info-box warn"><strong>This tool identifies potential burn windows — it does not tell you when to burn.</strong> The decision always belongs to the land manager.</div>
     <div class="card">
       <div class="card-label">DATA SOURCE &amp; LIMITATIONS</div>
-      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:8px">Forecast data from the <strong>National Weather Service API</strong> (api.weather.gov). Free, public, no key required. The interactive map uses OpenStreetMap data. The selected point helps choose a forecast grid; it does not guarantee site-specific weather accuracy.</p>
+      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:8px">Forecast data from the <strong>National Weather Service API</strong> (api.weather.gov). Free, public, no key required. The interactive map uses OpenStreetMap tiles. Choose a 2.5-km forecast area rather than pinpointing a property; only its representative center coordinate is saved. The overlay uses NOAA's CONUS NDFD grid, which may differ from an individual NWS forecast office's cells. Map tile providers may see the area viewed. Forecasts do not capture every on-site weather variation.</p>
     </div>
     <div class="card" style="text-align:center;padding:14px"><p style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:.05em">RXBURNSCOUT IS AN OPEN SOURCE PROJECT<br>A True North Seed Project Initiative<br>Hosted by Saint Francois Mountains Prescribed Burn Association</p></div>
   </div>
@@ -339,11 +344,9 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
       <div class="form-group"><label class="form-label">UNIT NAME</label><input class="form-input" id="unitName" placeholder="e.g. North Prairie - Unit A"></div>
       <div class="form-group"><div class="form-label burn-window-label"><label for="unitMinHours">Burn Window</label><details class="burn-window-help"><summary aria-label="Explain Burn Window" title="What is a Burn Window?">i</summary><div class="burn-window-tip" role="tooltip"><strong>WHAT IS A BURN WINDOW?</strong>A burn window is a period when the forecast meets all of your specified weather criteria.<br><br>This setting determines the minimum number of <b>consecutive hours</b> those conditions must be met for RxBurnScout to identify a qualifying window.<br><br>For example, a setting of 4 hours means that all specified criteria must be satisfied for at least four consecutive forecast hours. If even one criterion fails during an hour, that hour does not count toward the required duration.<br><br>This identifies a potential forecast window; it does not guarantee that conditions on the ground are suitable or that a burn should proceed.</div></details></div><div class="number-unit-wrap"><input class="form-input" id="unitMinHours" type="number" min="1" max="12" value="4"><span class="number-unit-suffix" aria-hidden="true">hours</span></div></div>
     </div>
-    <div class="form-group" style="margin-bottom:10px"><div class="form-label burn-window-label"><label for="locationMap">SELECT A POINT ON THE MAP</label><details class="burn-window-help"><summary aria-label="Explain Selected Coordinates" title="What do the selected coordinates mean?">i</summary><div class="burn-window-tip" role="tooltip"><strong>SELECTED COORDINATES</strong>The selected point is used to request a forecast from the National Weather Service.</div></details></div><div class="map-scroll-buffer"><div id="locationMap" role="application" aria-label="Map for selecting forecast coordinates"></div></div><div class="map-coordinates" id="mapCoordinates">Selected coordinates: none</div></div>
-    <div class="form-row three">
-      <div class="form-group"><label class="form-label" for="unitLat">LATITUDE</label><input class="form-input" id="unitLat" type="number" step="any" placeholder="38.63"></div>
-      <div class="form-group"><label class="form-label" for="unitLon">LONGITUDE</label><input class="form-input" id="unitLon" type="number" step="any" placeholder="-90.20"></div>
-    </div>
+    <div class="form-group" style="margin-bottom:10px"><div class="form-label burn-window-label"><label for="locationMap">SELECT A FORECAST GRID CELL</label><details class="burn-window-help"><summary aria-label="Explain forecast grid cells" title="How does the forecast grid work?">i</summary><div class="burn-window-tip" role="tooltip"><strong>FORECAST GRID SELECTION</strong>Zoom in until grid squares appear, then click the square covering the general area of your burn unit.<br><br>RxBurnScout saves a representative coordinate at that square's center, not the location of your property.<br><br>The overlay is based on NOAA's published 2.5-km national CONUS grid. Individual NWS forecast-office cells may not align precisely. Forecasts are for advance planning, not on-site burn decisions.</div></details></div><div class="map-scroll-buffer"><div id="locationMap" role="application" aria-label="Map for selecting an approximate forecast grid cell"></div></div><div class="map-coordinates" id="mapCoordinates" role="status" aria-live="polite">Zoom toward your general burn area. Grid squares appear when you zoom in.</div></div>
+    <!-- Coordinates are internal, derived only from the selected grid square's center. -->
+    <input type="hidden" id="unitLat"><input type="hidden" id="unitLon">
     <div class="card-label" style="margin-top:6px">PARAMETER WINDOWS</div>
     <p style="font-size:11px;color:var(--text-muted);margin-bottom:10px">All parameters must be in range simultaneously for an hour to pass.</p>
     <div id="paramFields"></div>
@@ -504,34 +507,166 @@ document.getElementById('navTabs').addEventListener('click',function(e){
   if(activeView==='analysis')renderAnalysis();if(activeView==='settings')renderSettings();
 });
 
-// Default first-unit overview: central contiguous U.S.; no location is selected yet.
+// First unit opens at a nationwide overview. Later units inherit the last saved area.
 var DEFAULT_MAP_CENTER=[39.0,-98.0],DEFAULT_MAP_ZOOM=4;
-var locationMap=null,locationMarker=null,selectedPreciseLat=null,selectedPreciseLon=null;
-// Create the map only once. The marker is draggable, and clicking elsewhere on the map
-// moves it. Coordinate fields display two decimals while the precise point is retained.
+var locationMap=null,selectedCellLat=null,selectedCellLon=null;
+var forecastGridLines=null,forecastGridCanvas=null,selectedGridOutline=null;
+var GRID_VISIBLE_ZOOM=11;
+// Once the user chooses a cell, show it and several neighbors at a useful zoom.
+// This is the same zoom used when adding a unit near the last saved unit.
+var GRID_SELECTION_OVERVIEW_ZOOM=GRID_VISIBLE_ZOOM+1;
+
+// NOAA's 2.5-km CONUS NDFD grid, defined in a spherical Lambert conformal
+// projection. The first NDFD point is a grid CENTER; boundaries fall midway
+// between point centers. We draw only the currently visible few dozen cells.
+// This is a selection aid, not a claim that /points uses these exact WFO cells.
+// NOAA: https://vlab.noaa.gov/web/mdl/ndfd-spatial-reference-system
+var NDFD_GRID_SPACING=2539.703, NDFD_EARTH_RADIUS=6371200;
+var NDFD_PHI0=25*Math.PI/180, NDFD_LAMBDA0=-95*Math.PI/180;
+var NDFD_N=Math.sin(NDFD_PHI0);
+var NDFD_F=Math.cos(NDFD_PHI0)*Math.pow(Math.tan(Math.PI/4+NDFD_PHI0/2),NDFD_N)/NDFD_N;
+var NDFD_RHO0=NDFD_EARTH_RADIUS*NDFD_F/Math.pow(Math.tan(Math.PI/4+NDFD_PHI0/2),NDFD_N);
+
+// Transform between geographic coordinates and NOAA's projected grid meters.
+function ndfdProject(lat,lon){
+  var phi=Number(lat)*Math.PI/180,lambda=Number(lon)*Math.PI/180;
+  var rho=NDFD_EARTH_RADIUS*NDFD_F/Math.pow(Math.tan(Math.PI/4+phi/2),NDFD_N);
+  var theta=NDFD_N*(lambda-NDFD_LAMBDA0);
+  return {x:rho*Math.sin(theta),y:NDFD_RHO0-rho*Math.cos(theta)};
+}
+function ndfdUnproject(x,y){
+  var dy=NDFD_RHO0-y,rho=Math.hypot(x,dy);
+  var phi=2*Math.atan(Math.pow(NDFD_EARTH_RADIUS*NDFD_F/rho,1/NDFD_N))-Math.PI/2;
+  var theta=Math.atan2(x,dy);
+  return {lat:phi*180/Math.PI,lon:(NDFD_LAMBDA0+theta/NDFD_N)*180/Math.PI};
+}
+var NDFD_FIRST_POINT=ndfdProject(20.191999,-121.554001);
+function forecastCellAt(lat,lon){
+  var p=ndfdProject(lat,lon);
+  var col=Math.round((p.x-NDFD_FIRST_POINT.x)/NDFD_GRID_SPACING);
+  var row=Math.round((p.y-NDFD_FIRST_POINT.y)/NDFD_GRID_SPACING);
+  var x=NDFD_FIRST_POINT.x+col*NDFD_GRID_SPACING;
+  var y=NDFD_FIRST_POINT.y+row*NDFD_GRID_SPACING;
+  return {col:col,row:row,x:x,y:y,center:ndfdUnproject(x,y)};
+}
+function forecastCellCorners(cell){
+  var h=NDFD_GRID_SPACING/2,x=cell.x,y=cell.y;
+  return [ndfdUnproject(x-h,y-h),ndfdUnproject(x+h,y-h),
+          ndfdUnproject(x+h,y+h),ndfdUnproject(x-h,y+h)].map(function(p){
+    return [p.lat,p.lon];
+  });
+}
+function updateForecastSelectionText(){
+  var el=document.getElementById('mapCoordinates');
+  if(selectedCellLat!==null&&selectedCellLon!==null){
+    el.textContent='Forecast area selected (about 2.5 km across).';
+  }else if(locationMap&&locationMap.getZoom()>=GRID_VISIBLE_ZOOM){
+    el.textContent='Click a grid square to select its forecast area.';
+  }else{
+    el.textContent='Zoom toward your general burn area. Grid squares appear when you zoom in.';
+  }
+}
+function drawSelectedForecastCell(cell){
+  if(!locationMap)return;
+  if(selectedGridOutline){locationMap.removeLayer(selectedGridOutline);selectedGridOutline=null;}
+  selectedGridOutline=L.polygon(forecastCellCorners(cell),{
+    pane:'forecastSelectionPane',interactive:false,
+    color:'#226B42',weight:3,fillColor:'#57B86B',fillOpacity:.32
+  }).addTo(locationMap);
+}
+// Update the visible portion of the grid when the map is panned or zoomed.
+// Leaflet's canvas renderer avoids creating hundreds of clickable SVG objects.
+function drawForecastGrid(){
+  if(!locationMap||!forecastGridLines)return;
+  forecastGridLines.clearLayers();
+  if(locationMap.getZoom()<GRID_VISIBLE_ZOOM){updateForecastSelectionText();return;}
+  var bounds=locationMap.getBounds(),nw=bounds.getNorthWest(),ne=bounds.getNorthEast();
+  var sw=bounds.getSouthWest(),se=bounds.getSouthEast(),mid=bounds.getCenter();
+  var samples=[nw,ne,sw,se,mid,L.latLng(nw.lat,mid.lng),L.latLng(sw.lat,mid.lng),
+    L.latLng(mid.lat,nw.lng),L.latLng(mid.lat,ne.lng)];
+  var xs=[],ys=[];
+  samples.forEach(function(p){var q=ndfdProject(p.lat,p.lng);xs.push(q.x);ys.push(q.y);});
+  var minCol=Math.floor((Math.min.apply(null,xs)-NDFD_FIRST_POINT.x)/NDFD_GRID_SPACING)-2;
+  var maxCol=Math.ceil((Math.max.apply(null,xs)-NDFD_FIRST_POINT.x)/NDFD_GRID_SPACING)+2;
+  var minRow=Math.floor((Math.min.apply(null,ys)-NDFD_FIRST_POINT.y)/NDFD_GRID_SPACING)-2;
+  var maxRow=Math.ceil((Math.max.apply(null,ys)-NDFD_FIRST_POINT.y)/NDFD_GRID_SPACING)+2;
+  // A safety limit for unusually wide viewports or unusual world-map bounds.
+  if((maxCol-minCol+2)*(maxRow-minRow+2)>2000){updateForecastSelectionText();return;}
+  var lineStyle={renderer:forecastGridCanvas,interactive:false,weight:1,color:'#305762',opacity:.7};
+  for(var i=minCol;i<=maxCol+1;i++){
+    var xx=NDFD_FIRST_POINT.x+(i-.5)*NDFD_GRID_SPACING,vertical=[];
+    for(var j=minRow;j<=maxRow+1;j++){
+      var p=ndfdUnproject(xx,NDFD_FIRST_POINT.y+(j-.5)*NDFD_GRID_SPACING);
+      vertical.push([p.lat,p.lon]);
+    }
+    L.polyline(vertical,lineStyle).addTo(forecastGridLines);
+  }
+  for(var row=minRow;row<=maxRow+1;row++){
+    var yy=NDFD_FIRST_POINT.y+(row-.5)*NDFD_GRID_SPACING,horizontal=[];
+    for(var col=minCol;col<=maxCol+1;col++){
+      var q=ndfdUnproject(NDFD_FIRST_POINT.x+(col-.5)*NDFD_GRID_SPACING,yy);
+      horizontal.push([q.lat,q.lon]);
+    }
+    L.polyline(horizontal,lineStyle).addTo(forecastGridLines);
+  }
+  updateForecastSelectionText();
+}
 function initializeLocationMap(){
   if(!locationMap){
     locationMap=L.map('locationMap').setView(DEFAULT_MAP_CENTER,DEFAULT_MAP_ZOOM);
-    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>'}).addTo(locationMap);
-    locationMap.on('click',function(e){setMapPoint(e.latlng.lat,e.latlng.lng,true);});
+    L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{
+      maxZoom:19,
+      attribution:'&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>'
+    }).addTo(locationMap);
+    locationMap.createPane('forecastGridPane');
+    locationMap.createPane('forecastSelectionPane');
+    locationMap.getPane('forecastGridPane').style.zIndex=410;
+    locationMap.getPane('forecastSelectionPane').style.zIndex=430;
+    locationMap.getPane('forecastGridPane').style.pointerEvents='none';
+    locationMap.getPane('forecastSelectionPane').style.pointerEvents='none';
+    forecastGridCanvas=L.canvas({pane:'forecastGridPane',padding:.15});
+    forecastGridLines=L.layerGroup().addTo(locationMap);
+    locationMap.on('moveend zoomend',drawForecastGrid);
+    // Clicking when zoomed out gets the user closer. A click within the drawn
+    // grid selects the square, not the precise spot that received the click.
+    locationMap.on('click',function(e){
+      if(locationMap.getZoom()<GRID_VISIBLE_ZOOM){
+        locationMap.setView(e.latlng,Math.min(GRID_VISIBLE_ZOOM,locationMap.getZoom()+2));
+      }else{
+        // A click selects the forecast cell even at extreme zoom, then returns
+        // to a readable overview centered on that cell instead of the click.
+        selectForecastCell(e.latlng.lat,e.latlng.lng,true);
+      }
+    });
   }
-  setTimeout(function(){if(locationMap)locationMap.invalidateSize();},100);
+  setTimeout(function(){if(locationMap){locationMap.invalidateSize();drawForecastGrid();}},100);
 }
-function setMapPoint(lat,lon,moveMap){
-  selectedPreciseLat=Number(lat);selectedPreciseLon=Number(lon);
-  document.getElementById('unitLat').value=selectedPreciseLat.toFixed(2);
-  document.getElementById('unitLon').value=selectedPreciseLon.toFixed(2);
-  document.getElementById('unitLat').dataset.preciseValue=String(selectedPreciseLat);
-  document.getElementById('unitLon').dataset.preciseValue=String(selectedPreciseLon);
-  document.getElementById('mapCoordinates').textContent='Selected coordinates: '+selectedPreciseLat.toFixed(2)+', '+selectedPreciseLon.toFixed(2);
-  if(locationMap){
-    if(!locationMarker){locationMarker=L.marker([selectedPreciseLat,selectedPreciseLon],{draggable:true}).addTo(locationMap);locationMarker.on('dragend',function(e){var p=e.target.getLatLng();setMapPoint(p.lat,p.lng,false);});}
-    else locationMarker.setLatLng([selectedPreciseLat,selectedPreciseLon]);
-    if(moveMap)locationMap.setView([selectedPreciseLat,selectedPreciseLon],Math.max(locationMap.getZoom(),13));
+// Keep the existing lat/lon property names and weather-fetch workflow, but
+// replace arbitrary user-selected coordinates with the selected cell center.
+// moveMap is true only for an explicit user selection; opening a saved unit
+// positions the map directly at the overview zoom without a fly animation.
+function selectForecastCell(lat,lon,moveMap){
+  var cell=forecastCellAt(Number(lat),Number(lon));
+  selectedCellLat=Number(cell.center.lat.toFixed(4));
+  selectedCellLon=Number(cell.center.lon.toFixed(4));
+  document.getElementById('unitLat').value=selectedCellLat.toFixed(4);
+  document.getElementById('unitLon').value=selectedCellLon.toFixed(4);
+  document.getElementById('unitLat').dataset.preciseValue=String(selectedCellLat);
+  document.getElementById('unitLon').dataset.preciseValue=String(selectedCellLon);
+  drawSelectedForecastCell(cell);
+  if(locationMap&&moveMap){
+    var center=[selectedCellLat,selectedCellLon];
+    // Allow zooming in as far as needed to inspect landmarks; always return to
+    // the same useful selection overview after the click. The selected cell is
+    // centered, not the precise spot where the user clicked.
+    if(window.matchMedia&&window.matchMedia('(prefers-reduced-motion: reduce)').matches){
+      locationMap.setView(center,GRID_SELECTION_OVERVIEW_ZOOM);
+    }else{
+      locationMap.flyTo(center,GRID_SELECTION_OVERVIEW_ZOOM,{animate:true,duration:0.65});
+    }
   }
+  updateForecastSelectionText();
 }
-// If a user edits the coordinate fields manually, treat the typed value as intentional.
-['unitLat','unitLon'].forEach(function(id){document.getElementById(id).addEventListener('input',function(){this.dataset.preciseValue='';selectedPreciseLat=null;selectedPreciseLon=null;document.getElementById('mapCoordinates').textContent='Coordinates entered manually; click the map to place a marker.';});});
 
 // Rebuild the Units view from the current in-memory unit list.
 // Keep this summary deliberately simple: the unit name identifies the card,
@@ -627,8 +762,8 @@ function showUnitModalAtTop(){
   overlay.classList.add('open');
   overlay.querySelector('.modal').scrollTop=0;
 }
-// Reset the editor for a new unit. If another unit has already been saved,
-// inherit its precise point; this is a starting position, not a shared location.
+// Reset for a new unit, inheriting only the representative forecast area
+// of the last-saved unit. Each new unit still stores its own selection.
 function openUnitModal(){
   var previous=mostRecentlySavedUnit();
   document.getElementById('editUnitId').value='';
@@ -638,24 +773,24 @@ function openUnitModal(){
   document.getElementById('unitLon').value='';
   document.getElementById('unitLat').dataset.preciseValue='';
   document.getElementById('unitLon').dataset.preciseValue='';
-  selectedPreciseLat=null;selectedPreciseLon=null;
-  document.getElementById('mapCoordinates').textContent='Selected coordinates: none';
+  selectedCellLat=null;selectedCellLon=null;
+  document.getElementById('mapCoordinates').textContent='Zoom toward your general burn area. Grid squares appear when you zoom in.';
   document.getElementById('unitMinHours').value='4';
-  if(locationMarker){locationMap.removeLayer(locationMarker);locationMarker=null;}
+  if(selectedGridOutline&&locationMap){locationMap.removeLayer(selectedGridOutline);selectedGridOutline=null;}
   buildParamFields();buildWindDirChecks([],true);
   showUnitModalAtTop();
   initializeLocationMap();
   if(previous){
     // Center the map at a useful area zoom even if the previous editor zoomed in.
-    locationMap.setView([Number(previous.lat),Number(previous.lon)],13);
-    setMapPoint(previous.lat,previous.lon,false);
+    locationMap.setView([Number(previous.lat),Number(previous.lon)],GRID_SELECTION_OVERVIEW_ZOOM);
+    selectForecastCell(previous.lat,previous.lon,false);
   }else{
     // Also reset the view when the last remaining unit has been deleted.
     locationMap.setView(DEFAULT_MAP_CENTER,DEFAULT_MAP_ZOOM);
   }
 }
 // Load one saved unit into the editor without changing it until Save is pressed.
-function editUnit(idx){var u=units[idx];document.getElementById('editUnitId').value=idx;document.getElementById('modalTitle').textContent='Edit Burn Unit';document.getElementById('unitName').value=u.name;document.getElementById('unitLat').value=Number(u.lat).toFixed(2);document.getElementById('unitLon').value=Number(u.lon).toFixed(2);document.getElementById('unitLat').dataset.preciseValue=String(u.lat);document.getElementById('unitLon').dataset.preciseValue=String(u.lon);document.getElementById('mapCoordinates').textContent='Saved coordinates: '+Number(u.lat).toFixed(2)+', '+Number(u.lon).toFixed(2);document.getElementById('unitMinHours').value=u.minHours;buildParamFields(u.params);buildWindDirChecks(u.windDirs||[],u.windDirsFilterEnabled!==true&&(!u.windDirs||u.windDirs.length===0));showUnitModalAtTop();initializeLocationMap();setMapPoint(u.lat,u.lon,true);}
+function editUnit(idx){var u=units[idx];document.getElementById('editUnitId').value=idx;document.getElementById('modalTitle').textContent='Edit Burn Unit';document.getElementById('unitName').value=u.name;document.getElementById('unitLat').value='';document.getElementById('unitLon').value='';document.getElementById('unitLat').dataset.preciseValue=String(u.lat);document.getElementById('unitLon').dataset.preciseValue=String(u.lon);document.getElementById('mapCoordinates').textContent='Opening saved forecast area…';document.getElementById('unitMinHours').value=u.minHours;buildParamFields(u.params);buildWindDirChecks(u.windDirs||[],u.windDirsFilterEnabled!==true&&(!u.windDirs||u.windDirs.length===0));showUnitModalAtTop();initializeLocationMap();var cell=forecastCellAt(u.lat,u.lon);locationMap.setView([cell.center.lat,cell.center.lon],GRID_SELECTION_OVERVIEW_ZOOM);selectForecastCell(u.lat,u.lon,false);}
 // Hide the unit editor; unsaved edits are discarded when it is closed.
 function closeUnitModal(){document.getElementById('unitModal').classList.remove('open');}
 
@@ -665,7 +800,7 @@ function saveUnit(){
   var name=document.getElementById('unitName').value.trim();
   var lat=parseFloat(document.getElementById('unitLat').dataset.preciseValue||document.getElementById('unitLat').value),lon=parseFloat(document.getElementById('unitLon').dataset.preciseValue||document.getElementById('unitLon').value);
   var minHours=parseInt(document.getElementById('unitMinHours').value)||4;
-  if(!name){alert('Enter a unit name.');return;}if(isNaN(lat)||isNaN(lon)){alert('Select a point on the map or enter valid coordinates.');return;}
+  if(!name){alert('Enter a unit name.');return;}if(selectedCellLat===null||selectedCellLon===null||!Number.isFinite(lat)||!Number.isFinite(lon)){alert('Zoom in and select a forecast grid square before saving.');return;}
   if(lat<24||lat>50||lon<-125||lon>-66){if(!confirm('Coordinates appear outside the continental US. NWS data is US-only. Continue?'))return;}
   var params=DEFAULT_PARAMS.map(function(dp,i){var mn=document.querySelector('.param-min[data-idx="'+i+'"]'),mx=document.querySelector('.param-max[data-idx="'+i+'"]');return{key:dp.key,label:dp.label,unit:dp.unit,min:parseFloat(mn.value),max:parseFloat(mx.value)};});
   var windDirs=Array.from(document.querySelectorAll('.wind-wedge.accepted')).map(function(c){return c.dataset.direction;});
