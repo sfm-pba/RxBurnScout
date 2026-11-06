@@ -1,19 +1,10 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v1.0.0';
-// v1.0.0: first board-released version. The map no longer asks for a single-point, leading user to input excessive location data detail.  Instead it asks the user to select a NWS forecast grid cell.  After selecting a forecast-grid cell,
-// smoothly recenter and return to the same balanced zoom used when a new
-// unit inherits its forecast area. Users may freely zoom in for orientation;
-// high-zoom clicks still select the underlying cell. Opening an existing
-// unit directly shows its selected cell at overview zoom. Forecasts, saved
-// unit format, privacy-by-design coordinates, and grid geometry are unchanged.
-// v0.2.5: replaced pinpoint map selection with NOAA CONUS 2.5-km NDFD
-// forecast-area grid selection. The user chooses a square; RxBurnScout saves
-// only its representative center coordinates (4 decimal places), not a property
-// location. Grid outlines are a planning guide; an NWS office's hourly forecast
-// cells may differ. All v0.2.4 editor behaviors and NWS /points lookup remain.
-// Previous v0.2.4: inherit last-saved unit location when adding a new unit;
-// nationwide first-unit overview, top-of-form scroll, no place-name search.
+var RXBURNSCOUT_VERSION='v1.0.2';
+// v1.0.2: replace the About tab with the approved user-facing description.
+// v1.0.1: prevent compact-header flicker with separate collapse/expand scroll
+// thresholds (hysteresis). The full header hides farther down the page and
+// reappears only near the top, preserving the existing compact animation.
 </script>
 <!-- RxBurnScout v0.2.0 — responsive readability and bottom-clearance refinements. -->
 <html lang="en">
@@ -186,6 +177,14 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
   .hg-cell{font-size:12px}
   .info-box{font-size:14px}
 }
+/* About page: readable paragraphs and lists without changing other views. */
+.about-copy,.about-list{font-size:14px;line-height:1.7;color:var(--text-secondary)}
+.about-copy+.about-copy{margin-top:12px}
+.about-list{padding-left:23px;margin-top:4px}
+.about-list li+li{margin-top:10px}
+.about-list strong{color:var(--text)}
+.about-copy a{color:var(--pass);font-weight:600;text-underline-offset:2px}
+@media(min-width:601px){.about-copy,.about-list{font-size:15px}}
 /* On narrow screens, keep the compact navigation short and easy to tap. */
 @media(max-width:600px){
   .app-header.is-compact{padding:6px 10px 5px}
@@ -286,22 +285,51 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
       </div>
     </div>
   </div>
-  <!-- About view: purpose, workflow, data source, and limitations. -->
+  <!-- About view: approved user-facing text; SEO work is tracked separately. -->
   <div class="view" id="view-about">
-    <div class="card"><div class="card-title">What RxBurnScout Does</div><p style="font-size:13px;line-height:1.7;color:var(--text-secondary)">A personal tool for individual land managers. You enter desired weather conditions for your burn unit(s). RxBurnScout highlights times when all those conditions will be met based on the 7-day National Weather Service forecast.</p></div>
-    <div class="card">
-      <div class="card-label">HOW IT WORKS</div>
-      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>1. Configure burn units</strong> — Set a unit name and a general forecast grid area, weather parameter ranges (wind speed, humidity, precipitation probability, temperature), and the minimum consecutive hours needed.</p>
-      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>2. Fetch the NWS forecast</strong> — The app requests hourly National Weather Service data using the representative coordinate at your selected grid square's center.</p>
-      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:10px"><strong>3. Hourly co-existence check</strong> — Each hour: do ALL parameters fall within your ranges simultaneously? No daily averaging, no percentage scoring. All or nothing.</p>
-      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary)"><strong>4. Window detection</strong> — Consecutive all-pass hours meeting your minimum duration are flagged as potential burn windows.</p>
-    </div>
-    <div class="info-box warn"><strong>This tool identifies potential burn windows — it does not tell you when to burn.</strong> The decision always belongs to the land manager.</div>
-    <div class="card">
-      <div class="card-label">DATA SOURCE &amp; LIMITATIONS</div>
-      <p style="font-size:13px;line-height:1.6;color:var(--text-secondary);margin-bottom:8px">Forecast data from the <strong>National Weather Service API</strong> (api.weather.gov). Free, public, no key required. The interactive map uses OpenStreetMap tiles. Choose a 2.5-km forecast area rather than pinpointing a property; only its representative center coordinate is saved. The overlay uses NOAA's CONUS NDFD grid, which may differ from an individual NWS forecast office's cells. Map tile providers may see the area viewed. Forecasts do not capture every on-site weather variation.</p>
-    </div>
-    <div class="card" style="text-align:center;padding:14px"><p style="font-family:var(--font-mono);font-size:10px;color:var(--text-muted);letter-spacing:.05em">RXBURNSCOUT IS AN OPEN SOURCE PROJECT<br>A True North Seed Project Initiative<br>Hosted by Saint Francois Mountains Prescribed Burn Association</p></div>
+    <section class="card" aria-labelledby="about-title">
+      <h1 class="card-title" id="about-title">About RxBurnScout</h1>
+      <p class="about-copy">RxBurnScout is a <strong>free, open-source prescribed burn weather planning tool</strong> for landowners and land managers. It compares hourly <strong>National Weather Service (NWS)</strong> forecasts with the conditions you specify, then highlights weather forecast windows that meet those conditions.</p>
+    </section>
+
+    <section class="card" aria-labelledby="about-workflow-title">
+      <h2 class="card-title" id="about-workflow-title">How it works</h2>
+      <ol class="about-list">
+        <li><strong>Choose a forecast area.</strong> Pan and zoom the map to your site, and select a square from NOAA's 2.5-km forecast grid.</li>
+        <li><strong>Set your burn-unit criteria.</strong> Choose acceptable ranges for wind speed, relative humidity, temperature, and specify the minimum number of consecutive hours required.</li>
+        <li><strong>Analyze the NWS hourly forecast.</strong> RxBurnScout evaluates the forecast hour-by-hour against your criteria. A potential burn window is identified only when all criteria pass your required number of consecutive hours.</li>
+        <li><strong>Review the forecast.</strong> Scan the seven-day outlook for potential burn days, then inspect the details. Refresh the forecast whenever you want updated NWS information.</li>
+      </ol>
+    </section>
+
+    <section class="card" aria-labelledby="about-details-title">
+      <h2 class="card-title" id="about-details-title">Significant Details</h2>
+      <ul class="about-list">
+        <li><strong>Multiple burn units:</strong> Save different forecast areas and weather criteria for multiple units.</li>
+        <li><strong>Browser-based access:</strong> Use the application on a desktop, tablet, or phone without installing software or creating an account.</li>
+      </ul>
+    </section>
+
+    <section class="card" aria-labelledby="about-data-title">
+      <h2 class="card-title" id="about-data-title">Your data and privacy</h2>
+      <p class="about-copy">By default, your burn units and settings are saved locally in your browser. You can export your units as a JSON backup file.</p>
+      <p class="about-copy">The Settings tab offers optional synchronization through a server that you choose and configure. Connecting a server is not required to use RxBurnScout. The app makes internet requests to the NWS for forecasts and to OpenStreetMap, and must share the location you choose in order for the app to function.</p>
+      <p class="about-copy">Forecasts are fetched when you open an analysis or choose to refresh it. This app does not currently provide unattended forecast monitoring or automatic notifications.</p>
+    </section>
+
+    <section class="card" aria-labelledby="about-sources-title">
+      <h2 class="card-title" id="about-sources-title">Information sources</h2>
+      <p class="about-copy">
+         <li>Weather data comes from the public <a href="https://www.weather.gov/documentation/services-web-api" target="_blank" rel="noopener noreferrer">National Weather Service API</a>.</li>
+         <li>The map is provided by <a href="https://www.openstreetmap.org" target="_blank" rel="noopener noreferrer">OpenStreetMap.org</a>.</li>
+         <li>The grid overlay (on the map) is generated from <a href="https://vlab.noaa.gov/web/mdl/ndfd-spatial-reference-system" target="_blank" rel="noopener noreferrer">NOAA's continental U.S. NDFD grid</a>.</li>
+    </section>
+
+    <section class="card" aria-labelledby="about-project-title">
+      <h2 class="card-title" id="about-project-title">Open-source project</h2>
+      <p class="about-copy">RxBurnScout is available for anyone to use, inspect, improve, and share under its open-source license. Find the application code, license, and project history in the <a href="https://github.com/sfm-pba/RxBurnScout" target="_blank" rel="noopener noreferrer">RxBurnScout GitHub repository</a>.</p>
+      <p class="about-copy">RxBurnScout is a <a href="https://truenorthseed.org/about" target="_blank" rel="noopener noreferrer">True North Seed Project initiative</a>, hosted by the <a href="https://sfm-pba.org/" target="_blank" rel="noopener noreferrer">Saint Francois Mountains Prescribed Burn Association</a>.</p>
+    </section>
   </div>
   <!-- Contact view: feedback about the RxBurnScout application only. -->
   <div class="view" id="view-contact">
@@ -1105,11 +1133,21 @@ document.getElementById('contactForm').addEventListener('submit',async function(
 });
 
 document.getElementById('appVersion').textContent=RXBURNSCOUT_VERSION;
-// Keep the navigation pinned on desktop and mobile. Once the user scrolls past
-// the title area, collapse the identity row so only the menu remains visible.
+// Keep the navigation pinned on desktop and mobile. Use two different scroll
+// thresholds (hysteresis) so the header doesn't flicker near the transition.
+// Collapsing the header changes document height; browsers (especially Chromium)
+// may adjust scrollY to preserve the visible content. A single threshold can
+// therefore cause repeated collapse/expand cycles while scrolling.
+// Collapse after 130px; expand only when the page is nearly back at the top.
+var HEADER_COMPACT_AT=130,HEADER_EXPAND_AT=20;
 function updateCompactHeader(){
   var header=document.querySelector('.app-header');
-  header.classList.toggle('is-compact',window.scrollY>70);
+  var compact=header.classList.contains('is-compact');
+  if(!compact&&window.scrollY>HEADER_COMPACT_AT){
+    header.classList.add('is-compact');
+  }else if(compact&&window.scrollY<HEADER_EXPAND_AT){
+    header.classList.remove('is-compact');
+  }
 }
 window.addEventListener('scroll',updateCompactHeader,{passive:true});
 window.addEventListener('resize',updateCompactHeader);
