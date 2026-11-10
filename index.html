@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v1.0.2';
-// v1.0.2: replace the About tab with the approved user-facing description.
+var RXBURNSCOUT_VERSION='v1.0.3';
+// v1.0.3: housekeeping cleanup, About markup repair, and restored extended-hour styling.
+// v1.0.2: Update About tab.
 // v1.0.1: prevent compact-header flicker with separate collapse/expand scroll
 // thresholds (hysteresis). The full header hides farther down the page and
 // reappears only near the top, preserving the existing compact animation.
 </script>
-<!-- RxBurnScout v0.2.0 — responsive readability and bottom-clearance refinements. -->
 <html lang="en">
 <head>
 <meta charset="UTF-8">
@@ -44,7 +44,6 @@ var RXBURNSCOUT_VERSION='v1.0.2';
 .wind-wedge:focus{outline:none} /* Prevent Chromium's rectangular SVG focus ring. */
 .wind-wedge:focus-visible{stroke:#173C9A;stroke-width:2.2} /* Keyboard focus follows the wedge shape. */
 .wind-compass-label{font-family:Arial,sans-serif;font-weight:800;font-size:6.3px;fill:var(--text,#222);text-anchor:middle;pointer-events:none}
-.wind-compass-center{fill:var(--surface,#fff);stroke:#A4AAA5;stroke-width:.55;pointer-events:none}
 @media(max-width:600px){.wind-compass{width:min(100%,340px)}}
 .badge-os{padding:3px 8px;background:rgba(245,240,232,.1);border-radius:16px;font-family:var(--font-mono);font-size:8px;color:rgba(245,240,232,.5);border:1px solid rgba(245,240,232,.08);letter-spacing:.05em}
 .nav-tabs{display:flex;gap:3px;margin-top:14px;overflow-x:auto;padding-bottom:2px;position:relative}
@@ -55,7 +54,7 @@ var RXBURNSCOUT_VERSION='v1.0.2';
 .card{padding:18px;background:var(--surface);border-radius:var(--radius);border:1px solid var(--border);box-shadow:0 2px 10px rgba(75,63,47,.05)}
 .card-title{font-family:var(--font-display);font-size:18px;font-weight:600;margin-bottom:10px;line-height:1.2}
 .card-label{font-family:var(--font-mono);font-size:9px;font-weight:600;color:var(--text-muted);letter-spacing:.1em;margin-bottom:10px}
-.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}.form-row.three{grid-template-columns:1fr 1fr 1fr}
+.form-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .form-group{display:flex;flex-direction:column;gap:3px}.form-label{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-muted)}
 /* Help text attached to the minimum-duration setting. */
 .burn-window-label{display:flex;align-items:center;gap:5px;min-height:12px}
@@ -68,8 +67,8 @@ var RXBURNSCOUT_VERSION='v1.0.2';
 .number-unit-wrap{display:flex;align-items:center;gap:6px}
 .number-unit-wrap .form-input{width:96px;flex:0 0 96px;padding-right:8px}
 .number-unit-suffix{position:static;transform:none;font-family:var(--font-mono);font-size:11px;color:var(--text-muted);pointer-events:none}
-.form-input,.form-select{padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);background:var(--bg);font-family:var(--font-mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s;width:100%}
-.form-input:focus,.form-select:focus{border-color:var(--pass)}.form-input::placeholder{color:var(--text-muted)}
+.form-input{padding:8px 10px;border-radius:var(--radius-sm);border:1px solid var(--border-strong);background:var(--bg);font-family:var(--font-mono);font-size:12px;color:var(--text);outline:none;transition:border-color .2s;width:100%}
+.form-input:focus{border-color:var(--pass)}.form-input::placeholder{color:var(--text-muted)}
 .map-scroll-buffer{padding:0 18px;touch-action:pan-y;overscroll-behavior:contain}#locationMap{height:300px;width:100%;border:1px solid var(--border-strong);border-radius:8px;z-index:1;background:#e9e4d8;touch-action:pan-x pan-y}@media(max-width:600px){.map-scroll-buffer{padding:0 12px}}
 .map-coordinates{font-family:var(--font-mono);font-size:11px;color:var(--text-secondary);margin-top:7px}
 .param-min-fixed{background:rgba(75,63,47,.025);border-color:rgba(75,63,47,.06);color:var(--text-muted);opacity:.45;user-select:none;-webkit-user-select:none;pointer-events:none}
@@ -95,6 +94,7 @@ var RXBURNSCOUT_VERSION='v1.0.2';
 .hourly-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
 .hourly-grid{display:grid;gap:2px;min-width:640px;font-size:11px}
 .hg-header{padding:4px 2px;text-align:center;font-family:var(--font-mono);font-weight:500;font-size:9px;color:var(--text-muted)}
+.hg-header.extended-hour{background:#595959;color:#fff;border-radius:4px 4px 0 0}
 .hg-label{padding:3px 6px;font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--text-secondary);display:flex;align-items:center}
 .hg-cell{padding:3px 2px;text-align:center;font-family:var(--font-mono);font-size:10px;font-weight:500;border-radius:2px}
 .hg-cell.pass{color:var(--pass);background:rgba(91,140,90,.05)}.hg-cell.fail{color:var(--fail);background:rgba(196,83,74,.05)}.hg-cell.no-data{color:#C87512;background:rgba(232,168,56,.13);font-weight:700}
@@ -168,7 +168,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
   .nav-tab{font-size:14px}
   .card-title,.modal-title{font-size:20px}
   .card-label,.form-label,.param-name{font-size:12px}
-  .form-input,.form-select,.btn{font-size:14px}
+  .form-input,.btn{font-size:14px}
   .btn-sm{font-size:12px}
   .unit-name{font-size:19px}
   .unit-meta{font-size:13px}
@@ -183,14 +183,14 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
 .about-list{padding-left:23px;margin-top:4px}
 .about-list li+li{margin-top:10px}
 .about-list strong{color:var(--text)}
-.about-copy a{color:var(--pass);font-weight:600;text-underline-offset:2px}
+.about-copy a,.about-list a{color:var(--pass);font-weight:600;text-underline-offset:2px}
 @media(min-width:601px){.about-copy,.about-list{font-size:15px}}
 /* On narrow screens, keep the compact navigation short and easy to tap. */
 @media(max-width:600px){
   .app-header.is-compact{padding:6px 10px 5px}
   .app-header.is-compact .nav-tab{padding:4px 9px}
   .app-header.is-compact .nav-tabs{gap:2px}
-  .form-row{grid-template-columns:1fr}.form-row.three{grid-template-columns:1fr 1fr}.param-config{grid-template-columns:90px 1fr 1fr}.day-tabs{gap:4px}.day-tab{min-width:60px;padding:6px 4px}.day-tab-label{font-size:10px}
+  .form-row{grid-template-columns:1fr}.param-config{grid-template-columns:90px 1fr 1fr}.day-tabs{gap:4px}.day-tab{min-width:60px;padding:6px 4px}.day-tab-label{font-size:10px}
 }
 </style>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -223,7 +223,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
   <div class="view active" id="view-units">
     <div style="display:flex;justify-content:space-between;align-items:center"><div class="card-label" style="margin-bottom:0">YOUR BURN UNITS</div><button class="btn btn-primary btn-sm" onclick="openUnitModal()">+ New Unit</button></div>
     <div id="unitsList"></div>
-    <div id="unitsEmpty" class="empty-state" style="display:none"><h3>No burn units yet</h3><p style="margin-bottom:14px">Create your first burn unit to start monitoring conditions.</p><button class="btn btn-primary" onclick="openUnitModal()">+ Create Burn Unit</button></div>
+    <div id="unitsEmpty" class="empty-state" style="display:none"><h3>No burn units yet</h3><p style="margin-bottom:14px">Create your first burn unit to start analyzing forecast conditions.</p><button class="btn btn-primary" onclick="openUnitModal()">+ Create Burn Unit</button></div>
   </div>
   <!-- Analysis view: fetch weather, summarize possible windows, and inspect hours. -->
   <div class="view" id="view-analysis">
@@ -319,10 +319,11 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
 
     <section class="card" aria-labelledby="about-sources-title">
       <h2 class="card-title" id="about-sources-title">Information sources</h2>
-      <p class="about-copy">
-         <li>Weather data comes from the public <a href="https://www.weather.gov/documentation/services-web-api" target="_blank" rel="noopener noreferrer">National Weather Service API</a>.</li>
-         <li>The map is provided by <a href="https://www.openstreetmap.org" target="_blank" rel="noopener noreferrer">OpenStreetMap.org</a>.</li>
-         <li>The grid overlay (on the map) is generated from <a href="https://vlab.noaa.gov/web/mdl/ndfd-spatial-reference-system" target="_blank" rel="noopener noreferrer">NOAA's continental U.S. NDFD grid</a>.</li>
+      <ul class="about-list">
+        <li>Weather data comes from the public <a href="https://www.weather.gov/documentation/services-web-api" target="_blank" rel="noopener noreferrer">National Weather Service API</a>.</li>
+        <li>The map is provided by <a href="https://www.openstreetmap.org" target="_blank" rel="noopener noreferrer">OpenStreetMap.org</a>.</li>
+        <li>The grid overlay (on the map) is generated from <a href="https://vlab.noaa.gov/web/mdl/ndfd-spatial-reference-system" target="_blank" rel="noopener noreferrer">NOAA's continental U.S. NDFD grid</a>.</li>
+      </ul>
     </section>
 
     <section class="card" aria-labelledby="about-project-title">
@@ -394,8 +395,6 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
 var STORAGE_KEY='rxburnscout_units',CONFIG_KEY='rxburnscout_config';
 // Colors are assigned to units in sequence so they can be distinguished in the UI.
 var UNIT_COLORS=['#E8A838','#5B8C5A','#7B9EA8','#C4534A','#8B6AB8','#4A8B8C','#B85B5B','#6B8B3D'];
-// The 16 compass points supported by the optional wind-direction filter.
-var WIND_DIRS=['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 // Starting weather limits for a new unit. Users can change the configurable
 // minimum/maximum values when editing a unit. These are defaults, not universal
 // prescriptions for safe burning.
@@ -918,8 +917,7 @@ function formatHour(h){if(h===0)return '12a';if(h===12)return '12p';return h<12?
 
 // Evaluate one forecast hour against every configured parameter and the optional
 // wind-direction filter. The returned allPass flag is true only if every recorded
-// check passes. Note: missing parameter values are currently treated as passing;
-// this is existing behavior documented here, not a change made in v0.1.3.
+// check passes. Missing weather data fails that criterion for the hour.
 function checkHour(hd,up,wd,wdFilterEnabled){
   // Each parameter gets its own result record so the grid can display individual
   // pass/fail states as well as the combined allPass decision.
