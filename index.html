@@ -1,6 +1,8 @@
 <!DOCTYPE html>
 <script>
-var RXBURNSCOUT_VERSION='v1.0.3';
+var RXBURNSCOUT_VERSION='v1.0.4';
+// v1.0.4: combine seven-day outlook and day navigation; stack qualifying
+// burn-window times within each day tab, removing the duplicate vertical list.
 // v1.0.3: housekeeping cleanup, About markup repair, and restored extended-hour styling.
 // v1.0.2: Update About tab.
 // v1.0.1: prevent compact-header flicker with separate collapse/expand scroll
@@ -102,10 +104,15 @@ var RXBURNSCOUT_VERSION='v1.0.3';
 .hg-allpass{padding:5px 2px;text-align:center;font-family:var(--font-mono);font-size:12px;font-weight:700;border-top:2px solid var(--border-strong);margin-top:2px}
 .window-badge{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:6px;font-family:var(--font-mono);font-size:11px;font-weight:600}
 .window-badge.found{background:linear-gradient(135deg,#5B8C5A,#4A7B49);color:#fff}.window-badge.none{background:var(--fail-bg);color:var(--fail)}
-.day-tabs{display:flex;gap:6px;flex-wrap:wrap}
-.day-tab{flex:1;min-width:70px;padding:8px 6px;border-radius:10px;border:1px solid rgba(75,63,47,.1);background:rgba(255,255,255,.5);cursor:pointer;font-family:var(--font-body);text-align:center;transition:all .2s}
+/* Seven-day outlook doubles as navigation. Each qualifying window gets its own
+   text line; flexbox stretches all tabs in a row to the tallest one. */
+.day-tabs{display:flex;gap:6px;flex-wrap:wrap;align-items:stretch}
+.day-tab{flex:1 1 98px;min-width:98px;min-height:62px;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:3px;padding:9px 5px;border-radius:10px;border:1px solid rgba(75,63,47,.1);background:rgba(255,255,255,.5);cursor:pointer;font-family:var(--font-body);text-align:center;transition:all .2s}
 .day-tab.active{border:2px solid var(--text);background:var(--surface);box-shadow:0 2px 8px rgba(75,63,47,.1)}
-.day-tab-label{font-weight:600;font-size:11px;color:var(--text)}.day-tab-status{margin-top:3px;font-family:var(--font-mono);font-size:9px;font-weight:600}
+.day-tab:focus-visible{outline:2px solid var(--pass);outline-offset:2px}
+.day-tab-label{font-weight:600;font-size:11px;line-height:1.3;color:var(--text)}
+.day-tab-window,.day-tab-no-window{font-family:var(--font-mono);font-size:10px;line-height:1.3;font-weight:600;white-space:nowrap}
+.day-tab-window{color:var(--pass)}.day-tab-no-window{color:var(--fail)}
 /* Status messages communicate success, caution, or an error. */
 .info-box{padding:10px 14px;border-radius:10px;font-size:12px;line-height:1.5}
 .info-box.success{background:var(--pass-bg);border:1px solid rgba(91,140,90,.12);color:var(--pass)}
@@ -113,7 +120,6 @@ var RXBURNSCOUT_VERSION='v1.0.3';
 .info-box.error{background:var(--fail-bg);border:1px solid rgba(196,83,74,.15);color:var(--fail)}
 .spinner{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:spin .6s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
-.status-dot{width:8px;height:8px;border-radius:50%;display:inline-block}.status-dot.pass{background:var(--pass)}.status-dot.fail{background:var(--fail)}
 .empty-state{text-align:center;padding:36px 20px;color:var(--text-muted)}.empty-state h3{font-family:var(--font-display);font-size:18px;color:var(--text-secondary);margin-bottom:6px}
 /* The unit editor is displayed above the current view as a modal. */
 /* Scroll the form itself, not the shaded page overlay. Native scrollbar
@@ -128,12 +134,9 @@ var RXBURNSCOUT_VERSION='v1.0.3';
 .modal-title{font-family:var(--font-display);font-size:18px;font-weight:600;margin-bottom:14px}
 .param-config{display:grid;grid-template-columns:110px 1fr 1fr;gap:8px;align-items:center;padding:6px 0;border-bottom:1px solid var(--border)}.param-config:last-child{border-bottom:none}
 .param-name{font-family:var(--font-mono);font-size:10px;font-weight:500;color:var(--text-secondary)}
-.summary-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid var(--border)}.summary-row:last-child{border-bottom:none}
 .sync-indicator{font-family:var(--font-mono);font-size:9px;padding:3px 8px;border-radius:12px;display:inline-flex;align-items:center;gap:4px}
 .sync-indicator.connected{background:var(--pass-bg);color:var(--pass)}.sync-indicator.local{background:rgba(75,63,47,.06);color:var(--text-muted)}
-/* Muted no-window days */
-.summary-row.muted{opacity:.45}.summary-row.muted:hover{opacity:.8}
-.summary-row.selected{background:rgba(75,63,47,.04);border-radius:6px}
+/* No-window tabs remain available for examining why a day fails. */
 .day-tab.muted{opacity:.45}.day-tab.muted.active,.day-tab.muted:hover{opacity:.85}
 /* Header info badges */
 /* Header badges expose short explanations when clicked or hovered. */
@@ -190,7 +193,7 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
   .app-header.is-compact{padding:6px 10px 5px}
   .app-header.is-compact .nav-tab{padding:4px 9px}
   .app-header.is-compact .nav-tabs{gap:2px}
-  .form-row{grid-template-columns:1fr}.param-config{grid-template-columns:90px 1fr 1fr}.day-tabs{gap:4px}.day-tab{min-width:60px;padding:6px 4px}.day-tab-label{font-size:10px}
+  .form-row{grid-template-columns:1fr}.param-config{grid-template-columns:90px 1fr 1fr}.day-tabs{gap:4px}.day-tab{min-width:102px;padding:8px 4px}.day-tab-label{font-size:10px}
 }
 </style>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -231,8 +234,9 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
     <div id="analysisContent" style="display:none">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px"><div class="card-label" style="margin-bottom:0">FORECAST ANALYSIS</div><button class="btn btn-primary btn-sm" id="btnFetch" onclick="fetchForecast(true)">Refresh Forecast</button></div>
       <div id="unitSelector" style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:10px"></div>
-      <div id="analysisStatus"></div><div id="analysisSummary"></div>
-      <div id="dayTabs" class="day-tabs" style="display:none"></div>
+      <div id="analysisStatus"></div>
+      <div id="analysisSummary"></div>
+      <div id="dayTabs" class="day-tabs" style="display:none" aria-label="Forecast days"></div>
       <div id="hourlyGridContainer" style="display:none"></div>
       <div id="analysisKey" style="display:none"></div>
     </div>
@@ -1012,7 +1016,7 @@ async function fetchForecast(force){
     if(forecastRequests[unit.id]!==request)return;
     forecastData[unit.id]=days;forecastTimeZones[unit.id]=result.timeZone;forecastFetchedOn[unit.id]=localDateKey(result.timeZone);forecastFetchedAt[unit.id]=Date.now();
     if(units[selectedUnitIdx]&&units[selectedUnitIdx].id===unit.id&&activeView==='analysis'){
-      selectedDay=0;renderForecastRefreshStatus(unit);renderDayTabs();renderHourlyGrid();renderSummary();
+      selectedDay=0;renderForecastRefreshStatus(unit);renderForecastOutlook();renderHourlyGrid();
     }
   }catch(err){
     if(forecastRequests[unit.id]!==request)return;
@@ -1035,7 +1039,7 @@ function renderAnalysis(){
   if(selectedUnitIdx<0||selectedUnitIdx>=units.length)selectedUnitIdx=0;
   document.getElementById('unitSelector').innerHTML=units.map(function(u,i){var a=i===selectedUnitIdx;return '<button class="btn '+(a?'btn-primary':'btn-secondary')+' btn-sm" onclick="'+(a?'editUnit('+i+')':'selectAnalysisUnit('+i+')')+'" title="'+(a?'Edit this unit\u2019s settings':'Switch to this unit')+'">'+esc(u.name)+(a?'<span class="unit-pill-edit">\u270E Edit</span>':'')+'</button>';}).join('');
   var unit=units[selectedUnitIdx];
-  if(forecastIsCurrent(unit)){renderForecastRefreshStatus(unit);renderDayTabs();renderHourlyGrid();renderSummary();}
+  if(forecastIsCurrent(unit)){renderForecastRefreshStatus(unit);renderForecastOutlook();renderHourlyGrid();}
   else{hideForecastDisplay();document.getElementById('analysisStatus').innerHTML='';fetchForecast(false);}
   updateFetchButton();
 }
@@ -1045,7 +1049,7 @@ function selectAnalysisUnit(idx){if(idx<0||idx>=units.length)return;selectedUnit
 function selectDay(i){
   var unit=units[selectedUnitIdx],days=unit&&forecastData[unit.id];if(!days)return;
   if(i<0||i>=days.length)return;
-  selectedDay=i;renderSummary();renderDayTabs();renderHourlyGrid();
+  selectedDay=i;renderForecastOutlook();renderHourlyGrid();
 }
 // Left/right arrow keys step through days in the Analysis view
 // Keyboard navigation is limited to the Analysis view and ignored while the modal
@@ -1058,23 +1062,27 @@ document.addEventListener('keydown',function(e){
   else if(e.key==='ArrowRight'){e.preventDefault();selectDay(selectedDay+1);}
 });
 
-// Build the multi-day outlook by running the same window detector for each day.
-function renderSummary(){
-  var unit=units[selectedUnitIdx],days=forecastData[unit.id];if(!days)return;
-  var sums=days.map(function(day){return{date:day.date,windows:findWindows(day.hours,unit.params,unit.windDirs,unit.minHours,unit.windDirsFilterEnabled)};});
-  var good=sums.filter(function(s){return s.windows.length>0;});
-  document.getElementById('analysisSummary').innerHTML='<div class="card" style="margin-bottom:10px"><div class="card-label">'+days.length+'-DAY OUTLOOK \u2014 '+esc(unit.name.toUpperCase())+'</div>'
-    +'<div style="margin:0 0 10px;font-size:11px;color:var(--text-muted)">'+(good.length>0?'🔥 <strong>'+good.length+'</strong> Potential burn days this week.':'0 Potential burn days this week.')+'</div>'
-    +sums.map(function(s,i){var hb=s.windows.length>0;var wt=hb?s.windows.map(function(w){return days[i].hours[w.start].hourLabel+'\u2013'+days[i].hours[w.end].hourLabel+' ('+(w.end-w.start+1)+'hr)';}).join(', '):'No '+unit.minHours+'hr+ window';
-    return '<div class="summary-row'+(hb?'':' muted')+(i===selectedDay?' selected':'')+'" style="cursor:pointer;padding-left:6px;padding-right:6px" onclick="selectDay('+i+')"><div style="display:flex;align-items:center;gap:8px"><span class="status-dot '+(hb?'pass':'fail')+'"></span><span style="font-size:12px;font-weight:500">'+esc(s.date)+'</span></div><span style="font-family:var(--font-mono);font-size:10px;font-weight:600;color:'+(hb?'var(--pass)':'var(--fail)')+'">'+wt+'</span></div>';}).join('')+'</div>';
-}
-
-// Build one selectable tab per forecast day and show whether it contains a window.
-function renderDayTabs(){
-  var unit=units[selectedUnitIdx],days=forecastData[unit.id];if(!days)return;
-  var c=document.getElementById('dayTabs');c.style.display='flex';
-  c.innerHTML=days.map(function(day,i){var w=findWindows(day.hours,unit.params,unit.windDirs,unit.minHours,unit.windDirsFilterEnabled);var hb=w.length>0;
-  return '<button class="day-tab'+(i===selectedDay?' active':'')+(hb?'':' muted')+'" onclick="selectDay('+i+')"><div class="day-tab-label">'+esc(day.date)+'</div><div class="day-tab-status" style="color:'+(hb?'var(--pass)':'var(--fail)')+'">'+(hb?w.length+' window'+(w.length>1?'s':''):'No window')+'</div></button>';}).join('');
+// One seven-day outlook serves both as the weekly summary and day navigation.
+// Qualifying windows are calculated once for all tabs and displayed on separate
+// lines (date + one row per window), replacing the redundant vertical day list.
+function renderForecastOutlook(){
+  var unit=units[selectedUnitIdx],days=unit&&forecastData[unit.id];if(!days)return;
+  var outlook=days.map(function(day){
+    return {day:day,windows:findWindows(day.hours,unit.params,unit.windDirs,unit.minHours,unit.windDirsFilterEnabled)};
+  });
+  var good=outlook.filter(function(item){return item.windows.length>0;}).length;
+  document.getElementById('analysisSummary').innerHTML='<div class="card" style="margin-bottom:10px">'
+    +'<div class="card-label">'+days.length+'-DAY OUTLOOK \u2014 '+esc(unit.name.toUpperCase())+'</div>'
+    +'<div style="font-size:12px;color:var(--text-muted)">'+(good>0?'🔥 <strong>'+good+'</strong>':'<strong>0</strong>')+' Potential burn days this week.</div></div>';
+  var tabs=document.getElementById('dayTabs');tabs.style.display='flex';
+  tabs.innerHTML=outlook.map(function(item,i){
+    var day=item.day,windows=item.windows,hasWindows=windows.length>0;
+    var detail=hasWindows?windows.map(function(w){
+      return '<div class="day-tab-window">'+day.hours[w.start].hourLabel+'\u2013'+day.hours[w.end].hourLabel+' ('+(w.end-w.start+1)+'hr)</div>';
+    }).join(''):'<div class="day-tab-no-window">No window</div>';
+    return '<button type="button" class="day-tab'+(i===selectedDay?' active':'')+(hasWindows?'':' muted')+'" aria-pressed="'+(i===selectedDay)+'" onclick="selectDay('+i+')">'
+      +'<div class="day-tab-label">'+esc(day.date)+'</div>'+detail+'</button>';
+  }).join('');
 }
 
 // Build the hour-by-hour matrix. Parameter rows show values and range status; the
