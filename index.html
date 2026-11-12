@@ -4,7 +4,10 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <script>
-var RXBURNSCOUT_VERSION='v1.0.5';
+var RXBURNSCOUT_VERSION='v1.0.6';
+// v1.0.6: Add location-aware NWS fire weather resources beneath Analysis.
+// Reuse the NWS /points forecast office for fire matrices and the narrative FWF.
+// Link to the NWS dashboard at the selected forecast grid cell; add VSmoke-Web.
 // v1.0.5: SEO-only release. Add metadata, canonical URL, website/app JSON-LD,
 // and social preview tags. Move version declaration into the document head.
 // Forecast analysis, map, storage, UI and approved About copy are unchanged.
@@ -222,6 +225,17 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
   .hg-cell{font-size:12px}
   .info-box{font-size:14px}
 }
+/* External fire-weather resources belong to the selected analysis unit. */
+.fire-resource-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-top:12px}
+.fire-resource-link{display:flex;flex-direction:column;gap:5px;min-height:84px;padding:12px 14px;border-radius:10px;border:1px solid var(--border-strong);color:var(--text);background:var(--bg);text-decoration:none;line-height:1.4;transition:background .15s,border-color .15s}
+.fire-resource-link:hover{background:var(--pass-bg);border-color:rgba(61,107,60,.35)}
+.fire-resource-link:focus-visible{outline:2px solid var(--pass);outline-offset:2px}
+.fire-resource-link strong{font-size:13px;color:var(--pass)}
+.fire-resource-link span{font-size:12px;color:var(--text-secondary)}
+.fire-resource-unavailable{opacity:.6;cursor:default}
+.fire-resource-unavailable strong{color:var(--text-secondary)}
+.fire-resource-footnote{font-size:11px;color:var(--text-muted);line-height:1.55;margin-top:12px}
+@media(max-width:600px){.fire-resource-grid{grid-template-columns:1fr}.fire-resource-link{min-height:72px}}
 /* About page: readable paragraphs and lists without changing other views. */
 .about-copy,.about-list{font-size:14px;line-height:1.7;color:var(--text-secondary)}
 .about-copy+.about-copy{margin-top:12px}
@@ -281,6 +295,8 @@ button.sync-indicator{font-family:var(--font-mono);font-size:9px;border:1px soli
       <div id="dayTabs" class="day-tabs" style="display:none" aria-label="Forecast days"></div>
       <div id="hourlyGridContainer" style="display:none"></div>
       <div id="analysisKey" style="display:none"></div>
+       <!-- Additional sources follow the hourly results; their links track the selected unit. -->
+       <section id="fireWeatherResources" class="card" aria-label="Additional fire weather resources" style="margin-top:14px"></section>
     </div>
   </div>
   <!-- Settings view: optional cross-device sync plus import/export and data reset. -->
@@ -452,7 +468,7 @@ var DEFAULT_PARAMS=[
 ];
 // In-memory application state. 'units' and 'config' are persisted locally;
 // forecast data and active selections are temporary browser-session state.
-var units=[],config={syncUrl:'',token:''},activeView='units',selectedUnitIdx=0,forecastData={},forecastTimeZones={},forecastFetchedOn={},forecastFetchedAt={},forecastRequests={},forecastRequestSequence=0,selectedDay=0,forecastAgeInterval=null;
+var units=[],config={syncUrl:'',token:''},activeView='units',selectedUnitIdx=0,forecastData={},forecastTimeZones={},forecastOffices={},forecastFetchedOn={},forecastFetchedAt={},forecastRequests={},forecastRequestSequence=0,selectedDay=0,forecastAgeInterval=null;
 // Prevent a weather request from hanging indefinitely. The minimum error display
 // time avoids an error message flashing too quickly to read.
 var FORECAST_TIMEOUT_MS=15000, FORECAST_ERROR_MIN_MS=3000;
@@ -553,7 +569,7 @@ function disconnectSync(){config.syncUrl='';saveLocal();updateSyncBadge();docume
 // Manually upload the current local unit list to the configured sync server.
 async function pushToServer(){var s=document.getElementById('syncStatus');if(!isConnected()){s.textContent='Not connected.';return;}s.textContent='Pushing\u2026';try{var d=await syncCall('PUT','/sync/units',{units:units});s.textContent='Pushed '+d.count+' units. '+d.lastSync;}catch(e){s.textContent='Push error: '+e.message;}}
 // Replace the local unit list with the copy returned by the sync server.
-async function pullFromServer(){var s=document.getElementById('syncStatus');if(!isConnected()){s.textContent='Not connected.';return;}s.textContent='Pulling\u2026';try{var d=await syncCall('GET','/sync/units');units=d.units||[];saveLocal();renderUnits();s.textContent='Pulled '+units.length+' units.';}catch(e){s.textContent='Pull error: '+e.message;}}
+async function pullFromServer(){var s=document.getElementById('syncStatus');if(!isConnected()){s.textContent='Not connected.';return;}s.textContent='Pulling\u2026';try{var d=await syncCall('GET','/sync/units');units=d.units||[];forecastOffices={};saveLocal();renderUnits();s.textContent='Pulled '+units.length+' units.';}catch(e){s.textContent='Pull error: '+e.message;}}
 // Copy the visible sync token to the clipboard and briefly show visual feedback.
 function copyToken(){var el=document.getElementById('settingsToken');navigator.clipboard.writeText(el.value).then(function(){el.style.borderColor='var(--pass)';setTimeout(function(){el.style.borderColor='';},1000);});}
 // Restore access using a token received from another device, then pull its units.
@@ -565,9 +581,9 @@ async function autoSync(){if(!isConnected())return;try{await syncCall('PUT','/sy
 // Download the current unit configurations as a dated JSON backup file.
 function exportData(){var b=new Blob([JSON.stringify({units:units,exported:new Date().toISOString()},null,2)],{type:'application/json'});var a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='rxburnscout-units-'+new Date().toISOString().slice(0,10)+'.json';a.click();}
 // Read a user-selected JSON backup, validate its basic shape, then replace local units.
-function importData(event){var f=event.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(e){try{var d=JSON.parse(e.target.result);if(!Array.isArray(d.units))throw new Error('Invalid format');units=d.units;units.forEach(function(u){delete u.fuel;});saveLocal();renderUnits();autoSync();alert('Imported '+units.length+' units.');}catch(err){alert('Import error: '+err.message);}};r.readAsText(f);event.target.value='';}
+function importData(event){var f=event.target.files[0];if(!f)return;var r=new FileReader();r.onload=function(e){try{var d=JSON.parse(e.target.result);if(!Array.isArray(d.units))throw new Error('Invalid format');units=d.units;units.forEach(function(u){delete u.fuel;});forecastOffices={};saveLocal();renderUnits();autoSync();alert('Imported '+units.length+' units.');}catch(err){alert('Import error: '+err.message);}};r.readAsText(f);event.target.value='';}
 // Ask for confirmation before clearing the saved unit list and forecast cache.
-function clearAllData(){if(!confirm('Delete ALL burn units and settings? Cannot be undone.'))return;units=[];forecastData={};forecastFetchedOn={};saveLocal();renderUnits();autoSync();}
+function clearAllData(){if(!confirm('Delete ALL burn units and settings? Cannot be undone.'))return;units=[];forecastData={};forecastFetchedOn={};forecastOffices={};saveLocal();renderUnits();autoSync();}
 
 // Navigation is delegated to the tab container: update active styles and reveal the
 // selected view, then run any view-specific rendering needed.
@@ -878,12 +894,12 @@ function saveUnit(){
   var params=DEFAULT_PARAMS.map(function(dp,i){var mn=document.querySelector('.param-min[data-idx="'+i+'"]'),mx=document.querySelector('.param-max[data-idx="'+i+'"]');return{key:dp.key,label:dp.label,unit:dp.unit,min:parseFloat(mn.value),max:parseFloat(mx.value)};});
   var windDirs=Array.from(document.querySelectorAll('.wind-wedge.accepted')).map(function(c){return c.dataset.direction;});
   var editIdx=document.getElementById('editUnitId').value,savedIdx;
-  if(editIdx!==''){savedIdx=parseInt(editIdx);if(units[savedIdx].lat!==lat||units[savedIdx].lon!==lon){delete forecastData[units[savedIdx].id];delete forecastFetchedOn[units[savedIdx].id];}units[savedIdx]={id:units[savedIdx].id,color:units[savedIdx].color,name:name,lat:lat,lon:lon,minHours:minHours,params:params,windDirs:windDirs,windDirsFilterEnabled:true,savedAt:Date.now()};}
+  if(editIdx!==''){savedIdx=parseInt(editIdx);if(units[savedIdx].lat!==lat||units[savedIdx].lon!==lon){delete forecastData[units[savedIdx].id];delete forecastFetchedOn[units[savedIdx].id];delete forecastOffices[units[savedIdx].id];}units[savedIdx]={id:units[savedIdx].id,color:units[savedIdx].color,name:name,lat:lat,lon:lon,minHours:minHours,params:params,windDirs:windDirs,windDirsFilterEnabled:true,savedAt:Date.now()};}
   else{var color=UNIT_COLORS[units.length%UNIT_COLORS.length];var id=Date.now().toString(36)+Math.random().toString(36).slice(2,6);units.push({id:id,name:name,lat:lat,lon:lon,minHours:minHours,params:params,windDirs:windDirs,windDirsFilterEnabled:true,color:color,savedAt:Date.now()});savedIdx=units.length-1;}
   saveLocal();renderUnits();closeUnitModal();autoSync();openUnitAnalysis(savedIdx);
 }
 // Remove a unit after confirmation and cancel any forecast request still running for it.
-function deleteUnit(idx){if(!confirm('Delete "'+units[idx].name+'"?'))return;delete forecastData[units[idx].id];delete forecastFetchedOn[units[idx].id];if(forecastRequests[units[idx].id]){forecastRequests[units[idx].id].controller.abort();clearTimeout(forecastRequests[units[idx].id].timeoutId);clearInterval(forecastRequests[units[idx].id].countdownIntervalId);delete forecastRequests[units[idx].id];}units.splice(idx,1);if(selectedUnitIdx>=units.length)selectedUnitIdx=Math.max(0,units.length-1);saveLocal();renderUnits();autoSync();}
+function deleteUnit(idx){if(!confirm('Delete "'+units[idx].name+'"?'))return;delete forecastData[units[idx].id];delete forecastFetchedOn[units[idx].id];delete forecastOffices[units[idx].id];if(forecastRequests[units[idx].id]){forecastRequests[units[idx].id].controller.abort();clearTimeout(forecastRequests[units[idx].id].timeoutId);clearInterval(forecastRequests[units[idx].id].countdownIntervalId);delete forecastRequests[units[idx].id];}units.splice(idx,1);if(selectedUnitIdx>=units.length)selectedUnitIdx=Math.max(0,units.length-1);saveLocal();renderUnits();autoSync();}
 
 // Retrieve an hourly forecast in two steps: first resolve coordinates through the NWS
 // points endpoint, then request the hourly forecast URL returned by that response.
@@ -892,11 +908,16 @@ async function fetchNWSForecast(lat,lon,signal){
   var options={signal:signal,headers:{'User-Agent':'RxBurnScout/1.0 (opensource@truenorthseed.org)','Accept':'application/geo+json'}};
   var pr=await fetch('https://api.weather.gov/points/'+lat.toFixed(4)+','+lon.toFixed(4),options);
   if(!pr.ok)throw new Error('NWS location lookup failed (HTTP '+pr.status+'). Check the unit coordinates or try again later.');
-  var pd=await pr.json();var props=pd.properties||{},hu=props.forecastHourly,timeZone=props.timeZone;if(!hu)throw new Error('The NWS did not provide an hourly forecast for these coordinates.');if(!timeZone)throw new Error('The NWS did not provide a time zone for these coordinates.');
+  var pd=await pr.json();var props=pd.properties||{},hu=props.forecastHourly,timeZone=props.timeZone;
+   // 'cwa' identifies the office responsible for the forecast point (e.g., LSX).
+   // A valid gridId can also supply the WFO when cwa is absent.
+   var office=String(props.cwa||props.gridId||'').trim().toUpperCase();
+   if(!/^[A-Z0-9]{3,4}$/.test(office))office=null;
+   if(!hu)throw new Error('The NWS did not provide an hourly forecast for these coordinates.');if(!timeZone)throw new Error('The NWS did not provide a time zone for these coordinates.');
   var fr=await fetch(hu,options);
   if(!fr.ok)throw new Error('NWS forecast service returned HTTP '+fr.status+'. Please try again later.');
   var data=await fr.json();if(!data.properties||!Array.isArray(data.properties.periods))throw new Error('The NWS response did not contain hourly forecast data.');
-  return {periods:data.properties.periods,timeZone:timeZone};
+  return {periods:data.properties.periods,timeZone:timeZone,office:office};
 }
 // Extract date/time parts in the burn site's NWS time zone, never the browser's zone.
 function zonedDateParts(date,timeZone){var parts=new Intl.DateTimeFormat('en-US',{timeZone:timeZone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(date),out={};parts.forEach(function(p){if(p.type!=='literal')out[p.type]=p.value;});return {year:out.year,month:out.month,day:out.day,hour:parseInt(out.hour,10),minute:parseInt(out.minute,10),dateKey:out.year+'-'+out.month+'-'+out.day};}
@@ -1056,9 +1077,9 @@ async function fetchForecast(force){
     // If another request replaced this one, ignore its late result rather than letting
     // an older response overwrite newer state.
     if(forecastRequests[unit.id]!==request)return;
-    forecastData[unit.id]=days;forecastTimeZones[unit.id]=result.timeZone;forecastFetchedOn[unit.id]=localDateKey(result.timeZone);forecastFetchedAt[unit.id]=Date.now();
+    forecastData[unit.id]=days;forecastTimeZones[unit.id]=result.timeZone;forecastOffices[unit.id]=result.office;forecastFetchedOn[unit.id]=localDateKey(result.timeZone);forecastFetchedAt[unit.id]=Date.now();
     if(units[selectedUnitIdx]&&units[selectedUnitIdx].id===unit.id&&activeView==='analysis'){
-      selectedDay=0;renderForecastRefreshStatus(unit);renderForecastOutlook();renderHourlyGrid();
+      selectedDay=0;renderForecastRefreshStatus(unit);renderForecastOutlook();renderHourlyGrid();renderFireWeatherResources();
     }
   }catch(err){
     if(forecastRequests[unit.id]!==request)return;
@@ -1081,9 +1102,10 @@ function renderAnalysis(){
   if(selectedUnitIdx<0||selectedUnitIdx>=units.length)selectedUnitIdx=0;
   document.getElementById('unitSelector').innerHTML=units.map(function(u,i){var a=i===selectedUnitIdx;return '<button class="btn '+(a?'btn-primary':'btn-secondary')+' btn-sm" onclick="'+(a?'editUnit('+i+')':'selectAnalysisUnit('+i+')')+'" title="'+(a?'Edit this unit\u2019s settings':'Switch to this unit')+'">'+esc(u.name)+(a?'<span class="unit-pill-edit">\u270E Edit</span>':'')+'</button>';}).join('');
   var unit=units[selectedUnitIdx];
-  if(forecastIsCurrent(unit)){renderForecastRefreshStatus(unit);renderForecastOutlook();renderHourlyGrid();}
-  else{hideForecastDisplay();document.getElementById('analysisStatus').innerHTML='';fetchForecast(false);}
-  updateFetchButton();
+  renderFireWeatherResources();
+   if(forecastIsCurrent(unit)){renderForecastRefreshStatus(unit);renderForecastOutlook();renderHourlyGrid();}
+   else{hideForecastDisplay();document.getElementById('analysisStatus').innerHTML='';fetchForecast(false);}
+   updateFetchButton();
 }
 // Change the selected unit and reset the selected day before re-rendering analysis.
 function selectAnalysisUnit(idx){if(idx<0||idx>=units.length)return;selectedUnitIdx=idx;selectedDay=0;renderAnalysis();}
@@ -1152,6 +1174,80 @@ function renderHourlyGrid(){
     +'<button class="day-nav-btn" aria-label="Next day" onclick="selectDay('+(selectedDay+1)+')"'+(selectedDay>=days.length-1?' disabled':'')+'>\u203A</button></div>';
   c.innerHTML='<div class="card" style="margin-top:10px">'+nav+'<div class="hourly-wrap">'+g+'</div></div>';
   var k=document.getElementById('analysisKey');k.style.display='block';k.innerHTML='<div class="info-box success" style="font-family:var(--font-mono);font-size:10px"><strong>KEY:</strong> Green=in range. Red=out of range. <span style="color:#C87512;font-weight:700">ND</span>=no NWS data available. \u25CF=all pass. Burn windows require '+unit.minHours+'+ consecutive all-pass hours.</div>';
+}
+
+// Build public external links from Scout's saved representative forecast-grid
+// coordinate. The narrative FWF is issued for the WFO's area, not the individual cell.
+function fireWeatherLinksForUnit(unit){
+  var lat=Number(unit.lat),lon=Number(unit.lon);
+  if(!Number.isFinite(lat)||!Number.isFinite(lon)||Math.abs(lat)>90||Math.abs(lon)>180)return null;
+  var latitude=lat.toFixed(4),longitude=lon.toFixed(4);
+  var office=forecastOffices[unit.id];
+  if(typeof office!=='string'||!/^[A-Z0-9]{3,4}$/.test(office))office=null;
+
+  // Lower-case lat/lon are the parameter names used in published NWS examples.
+  var matrix=new URL('https://www.weather.gov/wrh/fire');
+  if(office)matrix.searchParams.set('wfo',office.toLowerCase());
+  matrix.searchParams.set('lat',latitude);
+  matrix.searchParams.set('lon',longitude);
+
+  var dashboard=new URL('https://www.weather.gov/dlh/fwd');
+  dashboard.searchParams.set('lat',latitude);
+  dashboard.searchParams.set('lon',longitude);
+  dashboard.searchParams.set('clat',latitude);
+  dashboard.searchParams.set('clon',longitude);
+  dashboard.searchParams.set('zoom','13');
+  dashboard.searchParams.set('basemap','osm');
+  dashboard.searchParams.set('layers','USStates|ForecastDot|Domain|SurfaceFronts|Radar|');
+  dashboard.searchParams.set('fwf','F');
+  dashboard.searchParams.set('dispersion','0,13,30,60,250');
+  dashboard.searchParams.set('ndfd','windgust');
+  dashboard.searchParams.set('nohelp','t');
+  dashboard.searchParams.set('vrunits','ktft');
+  // Do not copy a fixed bbox from another geographic location: the NWS
+  // dashboard's lat/lon and clat/clon should control its starting point.
+
+  var narrative=null;
+  if(office){
+    var product=new URL('https://forecast.weather.gov/product.php');
+    product.searchParams.set('site','NWS');
+    product.searchParams.set('product','FWF');
+    product.searchParams.set('issuedby',office);
+    narrative=product.toString();
+  }
+  return {office:office,matrix:matrix.toString(),dashboard:dashboard.toString(),narrative:narrative,
+    vsmoke:'https://weather.gfc.state.ga.us/GoogleVsmoke/vsmoke-Good2.html'};
+}
+
+// Keep the four resources at the bottom of Analysis, independent of which forecast
+// date is selected. Only an actual click sends the approximate coordinate elsewhere.
+function renderFireWeatherResources(){
+  var root=document.getElementById('fireWeatherResources'),unit=units[selectedUnitIdx];
+  if(!root||!unit){if(root)root.innerHTML='';return;}
+  var links=fireWeatherLinksForUnit(unit);
+  if(!links){root.innerHTML='<div class="card-title">Fire Weather Resources</div><p>Choose a valid forecast area for this unit.</p>';return;}
+  function resourceLink(url,title,description){
+    return '<a class="fire-resource-link" href="'+esc(url)+'" target="_blank" rel="noopener noreferrer">'
+      +'<strong>'+esc(title)+' ↗</strong><span>'+esc(description)+'</span></a>';
+  }
+  var narrative=links.narrative
+    ?resourceLink(links.narrative,'NWS Narrative Fire Weather Forecast',
+      'Office-wide FWF for '+links.office+'. Find the zone covering your burn area; issuance varies by office.')
+    :'<div class="fire-resource-link fire-resource-unavailable" aria-disabled="true">'
+      +'<strong>NWS Narrative Fire Weather Forecast</strong>'
+      +'<span>Available when the NWS forecast office has been identified by a successful refresh.</span></div>';
+  root.innerHTML='<div class="card-title">Fire Weather Resources</div>'
+    +'<p style="font-size:12px;line-height:1.6;color:var(--text-secondary)">Additional planning information for <strong>'+esc(unit.name)+'</strong>.'
+    +(links.office?' NWS forecast office: <strong>'+links.office+'</strong>.':'')+'</p>'
+    +'<div class="fire-resource-grid">'
+    +resourceLink(links.matrix,'NWS Fire Weather Map & Matrices','Point forecasts, fire weather zones and watches/warnings.')
+    +resourceLink(links.dashboard,'NWS Fire Weather Dashboard','Graphical fire weather guidance centered on this forecast area.')
+    +narrative
+    +resourceLink(links.vsmoke,'VSmoke-Web Smoke Model','Estimate smoke impacts using your actual burn location and fire details.')
+    +'</div>'
+    +'<p class="fire-resource-footnote">NWS map/dashboard links use the approximate 2.5-km forecast-area coordinate saved in Scout. '
+    +'The narrative forecast covers the wider NWS office area. For VSmoke, enter your actual burn location, fuel, fire size and weather information. '
+    +'These resources open external sites and are not included in Scout’s burn-window calculations.</p>';
 }
 
 // Populate settings controls from the current sync configuration.
